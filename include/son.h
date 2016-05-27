@@ -3,18 +3,11 @@
 #ifndef SON_H_
 #define SON_H_
 
-//#include <unistd.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <mcu/types.h>
-
 #define SON_VERSION "0.0.1"
-
 #include "son_phy.h"
 
-
-typedef uint32_t son_size_t;
-typedef uint16_t son_count_t;
+typedef u32 son_size_t;
+typedef u16 son_count_t;
 
 #define SON_ACCESS_NAME_CAPACITY 64
 #define SON_ACCESS_NAME_SIZE (SON_ACCESS_NAME_CAPACITY-1)
@@ -39,24 +32,24 @@ typedef struct {
 typedef union {
 	float * f;
 	int * n;
-	uint32_t * n_uint32_t;
-	int32_t * n_int32_t;
+	u32 * n_u32;
+	int32_t * n_s32;
 	char * cdata;
 	void * data;
 } son_type_t;
 
 typedef struct MCU_PACK {
-	uint8_t name[SON_KEY_NAME_CAPACITY];
+	u8 name[SON_KEY_NAME_CAPACITY];
 } son_key_t;
 
 typedef struct MCU_PACK {
-	uint8_t page;
-	uint16_t page_offset;
+	u8 page;
+	u16 page_offset;
 } son_pos_t;
 
 //an object has members that are accessed by using a unique identifier (key)
 typedef struct MCU_PACK {
-	uint8_t type_flags;
+	u8 type_flags;
 	son_pos_t pos;
 	son_key_t key;
 } son_store_t;
@@ -67,7 +60,7 @@ typedef enum {
 	SON_STRING,
 	SON_FLOAT,
 	SON_NUMBER_U32,
-	SON_NUMBER_I32,
+	SON_NUMBER_S32,
 	SON_DATA,
 	SON_OBJ,
 	SON_ARRAY, //can be an array of distinct objects
@@ -81,16 +74,16 @@ typedef enum {
 extern "C" {
 #endif
 
-uint8_t son_type(const son_store_t * eon);
-void son_set_type(son_store_t * eon, uint8_t type, uint8_t fixed_array_size);
-uint32_t son_next(const son_store_t * eon);
-void son_set_next(son_store_t * eon, uint32_t offset);
+u8 son_type(const son_store_t * eon);
+void son_set_type(son_store_t * eon, u8 type, u8 fixed_array_size);
+u32 son_next(const son_store_t * eon);
+void son_set_next(son_store_t * eon, u32 offset);
 
 static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); }
 
 #ifdef __link
 #include <iface/link.h>
-void son_set_handle(son_t * h, link_phy_t handle);
+void son_set_handle(son_t * h, void * handle);
 #endif
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
@@ -106,7 +99,7 @@ int son_open_data(son_t * h, const char * key);
 int son_close_data(son_t * h);
 int son_write_str(son_t * h, const char * key, const char * v);
 int son_write_num(son_t * h, const char * key, int32_t v);
-int son_write_unum(son_t * h, const char * key, uint32_t v);
+int son_write_unum(son_t * h, const char * key, u32 v);
 int son_write_float(son_t * h, const char * key, float v);
 int son_write_true(son_t * h, const char * key);
 int son_write_false(son_t * h, const char * key);
@@ -115,7 +108,7 @@ int son_write_data(son_t * h, const char * key, const void * v, son_size_t size)
 int son_write_open_data(son_t * h, const void * v, son_size_t size);
 int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity);
 int32_t son_read_num(son_t * h, const char * access);
-uint32_t son_read_unum(son_t * h, const char * access);
+u32 son_read_unum(son_t * h, const char * access);
 float son_read_float(son_t * h, const char * access);
 int son_read_data(son_t * h, const char * access, void * data, son_size_t size);
 

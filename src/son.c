@@ -24,7 +24,7 @@ static void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, in
 static int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t * data_size);
 static void son_insert_key(son_store_t * eon, const char * key);
 static int son_write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size);
-static int son_write_open_marker(son_t * h, const char * key, uint8_t type, uint8_t fixed_size);
+static int son_write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size);
 static int son_write_close_marker(son_t * h);
 static void son_fprintf(son_phy_t * phy, const char * format, ...);
 
@@ -34,7 +34,7 @@ static void son_fprintf(son_phy_t * phy, const char * format, ...);
 #if defined __link
 #include <iface/link.h>
 
-void son_set_handle(son_t * h, link_phy_t handle){
+void son_set_handle(son_t * h, void * handle){
 	son_phy_set_handle(&(h->phy), handle);
 }
 
@@ -62,29 +62,29 @@ void son_set_handle(son_t * h, link_phy_t handle){
 
 #endif
 
-uint8_t son_type(const son_store_t * eon){
+u8 son_type(const son_store_t * eon){
 	return eon->type_flags & SON_TYPE_MASK;
 }
 
-uint8_t son_fixed_array_size(const son_store_t * eon){
+u8 son_fixed_array_size(const son_store_t * eon){
 	return (eon->type_flags & SON_FIXED_ARRAY_FLAG) != 0;
 }
 
-void son_set_type(son_store_t * eon, uint8_t type, uint8_t fixed_array_size){
+void son_set_type(son_store_t * eon, u8 type, u8 fixed_array_size){
 	eon->type_flags = (type & SON_TYPE_MASK) | (fixed_array_size ? SON_FIXED_ARRAY_FLAG : 0);
 }
 
 
-uint32_t son_next(const son_store_t * eon){
+u32 son_next(const son_store_t * eon){
 	return eon->pos.page*65536 + eon->pos.page_offset;
 }
 
-void son_set_next(son_store_t * eon, uint32_t offset){
+void son_set_next(son_store_t * eon, u32 offset){
 	eon->pos.page = offset >> 16;
 	eon->pos.page_offset = offset & 0xFFFF;
 }
 
-int son_write_open_marker(son_t * h, const char * key, uint8_t type, uint8_t fixed_size){
+int son_write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size){
 	son_store_t son_store;
 	size_t pos;
 
@@ -231,10 +231,10 @@ int son_write_str(son_t * h, const char * key, const char * v){
 }
 
 int son_write_num(son_t * h, const char * key, int32_t v){
-	return son_write_raw_data(h, key, SON_NUMBER_I32, &v, sizeof(v));
+	return son_write_raw_data(h, key, SON_NUMBER_S32, &v, sizeof(v));
 }
 
-int son_write_unum(son_t * h, const char * key, uint32_t v){
+int son_write_unum(son_t * h, const char * key, u32 v){
 	return son_write_raw_data(h, key, SON_NUMBER_U32, &v, sizeof(v));
 }
 
@@ -295,7 +295,7 @@ int son_token_is_array(char * tok, son_size_t * index){
 	return 1;
 }
 
-int son_seek_array_key(son_t * h, son_size_t ind, uint8_t fixed_size, son_store_t * eon, son_size_t * size){
+int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * eon, son_size_t * size){
 	son_size_t pos;
 	son_size_t data_size;
 	son_size_t array_data_size;
@@ -464,8 +464,8 @@ int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity
 
 	switch(son_type(&eon)){
 	case SON_FLOAT: snprintf(buffer, 32, "%f", *(ptype.f)); break;
-	case SON_NUMBER_U32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_uint32_t)); break;
-	case SON_NUMBER_I32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_int32_t)); break;
+	case SON_NUMBER_U32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_u32)); break;
+	case SON_NUMBER_S32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_s32)); break;
 	case SON_TRUE: strcpy(buffer, "true"); break;
 	case SON_FALSE: strcpy(buffer, "false"); break;
 	case SON_NULL: strcpy(buffer, "null"); break;
@@ -498,8 +498,8 @@ int32_t son_read_num(son_t * h, const char * access){
 
 	switch(son_type(&eon)){
 	case SON_FLOAT: return (int)*(ptype.f);
-	case SON_NUMBER_U32: return *(ptype.n_uint32_t);
-	case SON_NUMBER_I32: return *(ptype.n_int32_t);
+	case SON_NUMBER_U32: return *(ptype.n_u32);
+	case SON_NUMBER_S32: return *(ptype.n_s32);
 	case SON_TRUE: return 1;
 	case SON_FALSE: return 0;
 	case SON_NULL: return 0;
@@ -510,7 +510,7 @@ int32_t son_read_num(son_t * h, const char * access){
 	return 0;
 }
 
-uint32_t son_read_unum(son_t * h, const char * access){
+u32 son_read_unum(son_t * h, const char * access){
 	int data_size;
 	son_store_t eon;
 	son_type_t ptype;
@@ -525,8 +525,8 @@ uint32_t son_read_unum(son_t * h, const char * access){
 
 	switch(son_type(&eon)){
 	case SON_FLOAT: return (int)*(ptype.f);
-	case SON_NUMBER_U32: return *(ptype.n_uint32_t);
-	case SON_NUMBER_I32: return *(ptype.n_int32_t);
+	case SON_NUMBER_U32: return *(ptype.n_u32);
+	case SON_NUMBER_S32: return *(ptype.n_s32);
 	case SON_TRUE: return 1;
 	case SON_FALSE: return 0;
 	case SON_NULL: return 0;
@@ -552,8 +552,8 @@ float son_read_float(son_t * h, const char * access){
 
 	switch(son_type(&eon)){
 	case SON_FLOAT: return *(ptype.f);
-	case SON_NUMBER_U32: return *(ptype.n_uint32_t);
-	case SON_NUMBER_I32: return *(ptype.n_int32_t);
+	case SON_NUMBER_U32: return *(ptype.n_u32);
+	case SON_NUMBER_S32: return *(ptype.n_s32);
 	case SON_TRUE: return 1.0;
 	case SON_FALSE: return 0.0;
 	case SON_NULL: return 0.0;
@@ -582,14 +582,9 @@ int son_to_json(son_t * h, const char * path){
 
 	memset(&phy, 0, sizeof(phy));
 
-	uint8_t type;
+	u8 type;
 
 	son_phy_read(&(h->phy), &eon, sizeof(son_store_t));
-
-	printf("Store size is %d\n", sizeof(son_store_t));
-	fflush(stdout);
-
-	printf("Type is 0x%X\n", eon.type_flags);
 
 	type = son_type(&eon);
 
@@ -627,7 +622,7 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 	son_store_t eon;
 	son_size_t data_size;
 	son_size_t pos;
-	uint8_t type;
+	u8 type;
 
 
 	while( son_phy_read(&(h->phy), &eon, sizeof(son_store_t)) > 0 ){
@@ -685,13 +680,13 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 				float * value = (float*)buffer;
 				son_fprintf(phy, "\"%f\"", *value);
 			} else if ( type == SON_NUMBER_U32 ){
-				uint32_t * value = (uint32_t*)buffer;
+				u32 * value = (u32*)buffer;
 #if defined __link
 				son_fprintf(phy, "\"%d\"", *value);
 #else
 				son_fprintf(phy, "\"%ld\"", *value);
 #endif
-			} else if ( type == SON_NUMBER_I32 ){
+			} else if ( type == SON_NUMBER_S32 ){
 				int32_t * value = (int32_t*)buffer;
 #if defined __link
 				son_fprintf(phy, "\"%d\"", *value);
