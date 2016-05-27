@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <mcu/types.h>
 
+#define SON_VERSION "0.0.1"
+
 #include "son_phy.h"
 
 
