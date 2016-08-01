@@ -8,13 +8,13 @@
 #include "son_phy.h"
 
 
-#if defined __link
+#if !defined __StratifyOS__
 
 #include <stdio.h>
 
 
-void son_phy_set_handle(son_phy_t * phy, void * handle){
-	phy->driver = handle;
+void son_phy_set_driver(son_phy_t * phy, void * driver){
+	phy->driver = driver;
 }
 
 int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode){
@@ -37,11 +37,15 @@ int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode
 
 		return -1;
 	}
+#if defined __link
 	phy->fd = link_open(phy->driver, name, flags, mode);
 	if( phy->fd < 0 ){
 		return -1;
 	}
 	return 0;
+#else
+	return -1;
+#endif
 }
 
 int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte){
@@ -49,7 +53,11 @@ int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte){
 		//read using fread
 		return fread(buffer, 1, nbyte, phy->f);
 	}
+#if defined __link
 	return link_read(phy->driver, phy->fd, buffer, nbyte);
+#else
+	return -1;
+#endif
 }
 
 int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){
@@ -57,8 +65,11 @@ int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){
 		//write using fwrite
 		return fwrite(buffer, 1, nbyte, phy->f);
 	}
-
+#if defined __link
 	return link_write(phy->driver, phy->fd, buffer, nbyte);
+#else
+	return -1;
+#endif
 }
 
 int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){
@@ -68,7 +79,11 @@ int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){
 		}
 		return -1;
 	}
+#if defined __link
 	return link_lseek(phy->driver, phy->fd, offset, whence);
+#else
+	return -1;
+#endif
 }
 
 int son_phy_close(son_phy_t * phy){
@@ -78,8 +93,11 @@ int son_phy_close(son_phy_t * phy){
 		phy->f = 0;
 		return ret;
 	}
-
+#if defined __link
 	return link_close(phy->driver, phy->fd);
+#else
+	return -1;
+#endif
 }
 
 

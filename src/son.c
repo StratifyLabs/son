@@ -31,20 +31,10 @@ static void son_fprintf(son_phy_t * phy, const char * format, ...);
 #define SON_FIXED_ARRAY_FLAG (1<<7)
 #define SON_TYPE_MASK (0x0F)
 
-#if defined __link
-#include <iface/link.h>
-
-void son_set_handle(son_t * h, void * handle){
-	son_phy_set_handle(&(h->phy), handle);
+#if !defined __StratifyOS__
+void son_set_driver(son_t * h, void * handle){
+	son_phy_set_driver(&(h->phy), handle);
 }
-
-#define SON_SEEK_SET LINK_SEEK_SET
-#define SON_SEEK_CUR LINK_SEEK_CUR
-#define SON_SEEK_END LINK_SEEK_END
-#define SON_O_RDONLY LINK_O_RDONLY
-#define SON_O_RDWR LINK_O_RDWR
-#define SON_O_CREAT LINK_O_CREAT
-#define SON_O_TRUNC LINK_O_TRUNC
 
 #define SON_PRINTF_INT "%d"
 
@@ -284,7 +274,7 @@ int son_token_is_array(char * tok, son_size_t * index){
 	if( arr == 0 ){
 		return 0;
 	}
-#ifdef __link
+#if !defined __StratifyOS__
 	sscanf(arr, "[%d]", index);
 #else
 	sscanf(arr, "[%ld]", index);
@@ -602,7 +592,6 @@ int son_to_json(son_t * h, const char * path){
 	}
 
 	son_fprintf(&phy, "{\n");
-	printf("Top recusive enter\n"); fflush(stdout);
 	son_to_json_recursive(h, son_next(&eon), 1, is_array, &phy);
 	son_fprintf(&phy, "}\n");
 
@@ -681,14 +670,14 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 				son_fprintf(phy, "\"%f\"", *value);
 			} else if ( type == SON_NUMBER_U32 ){
 				u32 * value = (u32*)buffer;
-#if defined __link
+#if !defined __StratifyOS__
 				son_fprintf(phy, "\"%d\"", *value);
 #else
 				son_fprintf(phy, "\"%ld\"", *value);
 #endif
 			} else if ( type == SON_NUMBER_S32 ){
 				int32_t * value = (int32_t*)buffer;
-#if defined __link
+#if !defined __StratifyOS__
 				son_fprintf(phy, "\"%d\"", *value);
 #else
 				son_fprintf(phy, "\"%ld\"", *value);

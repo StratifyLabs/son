@@ -83,8 +83,9 @@ static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); 
 
 #ifdef __link
 #include <iface/link.h>
-void son_set_handle(son_t * h, void * handle);
 #endif
+
+void son_set_driver(son_t * h, void * handle);
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
