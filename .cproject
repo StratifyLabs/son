@@ -548,7 +548,7 @@
 					<stringMacro name="HOST" type="VALUE_TEXT" value="."/>
 					<stringMacro name="CXX_linux" type="VALUE_TEXT" value="g++"/>
 					<stringMacro name="RM_win32" type="VALUE_TEXT" value="${INSTALLPATH}/${HOST}/lib/ldscripts/clean.bat"/>
-					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt\Tools\mingw492_32"/>
+					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt-5.6\Tools\mingw492_32"/>
 					<stringMacro name="POSTPROCESS_win64" type="VALUE_TEXT" value="${POSTPROCESS_win32}"/>
 					<stringMacro name="INSTALLPATH_macosx" type="VALUE_TEXT" value="${TOOLSPATH_macosx}"/>
 					<stringMacro name="CXX_win64" type="VALUE_TEXT" value="${CXX_win32}"/>
@@ -594,11 +594,11 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="${RM}" description="" errorParsers="org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903.2013175828" name="build_release" parent="cdt.managedbuild.config.gnu.cross.lib.release" postannouncebuildStep="" postbuildStep="${POSTPROCESS} ${TOOLSPATH} ${HOST} Project ${BUILD_NAME} ${BUILD_ARCH} ${BUILD_FLOAT} stfy ${BUILD_TYPE}" preannouncebuildStep="" prebuildStep="">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="${RM}" description="" errorParsers="org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903.2013175828" name="build_release" parent="cdt.managedbuild.config.gnu.cross.lib.release" postannouncebuildStep="" postbuildStep="${POSTPROCESS} ${INSTALLPATH} ${HOST} Project ${BUILD_NAME} ${BUILD_ARCH} ${BUILD_FLOAT} stfy ${BUILD_TYPE}" preannouncebuildStep="" prebuildStep="">
 					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903.2013175828." name="/" resourcePath="">
 						<toolChain errorParsers="" id="cdt.managedbuild.toolchain.gnu.cross.lib.release.42476333" name="Cross GCC" nonInternalBuilderId="cdt.managedbuild.builder.gnu.cross" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
-							<option id="cdt.managedbuild.option.gnu.cross.prefix.769754210" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" value="" valueType="string"/>
-							<option id="cdt.managedbuild.option.gnu.cross.path.1764445867" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" value=" ${PathDelimiter}${TOOLSPATH}/bin" valueType="string"/>
+							<option id="cdt.managedbuild.option.gnu.cross.prefix.769754210" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="" valueType="string"/>
+							<option id="cdt.managedbuild.option.gnu.cross.path.1764445867" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" useByScannerDiscovery="false" value=" ${PathDelimiter}${TOOLSPATH}/bin" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.889993726" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
 							<builder autoBuildTarget="all" buildPath="${workspace_loc:/CoActionOS-Applib/Release_CoActionOS_lpc17xx}" cleanBuildTarget="clean" errorParsers="" id="org.eclipse.cdt.build.core.internal.builder.1023717570" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder">
 								<outputEntries>
@@ -665,79 +665,82 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Release_eon_arm_cm4_kernel"/>
-		<configuration configurationName="build_debug_son_armv7em_fpu"/>
-		<configuration configurationName="Release_fatfs_arm_cm4"/>
-		<configuration configurationName="Release_AES_link"/>
-		<configuration configurationName="build_release_son_armv7em"/>
-		<configuration configurationName="build_release_armv7m">
-			<resource resourceType="PROJECT" workspacePath="/SON"/>
-		</configuration>
-		<configuration configurationName="Release_hwpl_lpc13xx"/>
-		<configuration configurationName="Release_AES_arm">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
-		<configuration configurationName="build_release_app_armv7m"/>
-		<configuration configurationName="Release_speex_arm"/>
-		<configuration configurationName="Default">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
-		<configuration configurationName="Release_mg_arm_cm4_kernel"/>
-		<configuration configurationName="build_debug_son_armv7em"/>
-		<configuration configurationName="lpc17xx">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
-		<configuration configurationName="Release_CMSIS_DSP_lpc17xx"/>
-		<configuration configurationName="Release_CoActionOS_link">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
-		<configuration configurationName="build_release_mg_armv7em_fpu"/>
-		<configuration configurationName="Release_Codec2_arm"/>
-		<configuration configurationName="Release_hwpl_lpc82x"/>
-		<configuration configurationName="build_release_son_armv7m"/>
-		<configuration configurationName="Release_eon_link"/>
-		<configuration configurationName="Release_fatfs_arm"/>
-		<configuration configurationName="Release_opus_arm"/>
-		<configuration configurationName="Release_fatfs_arm_cm4_kernel"/>
-		<configuration configurationName="Release_Codec2_arm_cm4"/>
-		<configuration configurationName="Release_mg_arm_cm4"/>
-		<configuration configurationName="Release_CoActionOS_lpc177x_8x"/>
-		<configuration configurationName="build_release_son_armv7em_fpu"/>
-		<configuration configurationName="Release_AES_arm_cm4"/>
-		<configuration configurationName="Release_AES_arm_eabi">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
-		<configuration configurationName="build_release_armv7em"/>
-		<configuration configurationName="Release_mg_arm_kernel"/>
-		<configuration configurationName="Release_mg_arm"/>
-		<configuration configurationName="build_debug_son_armv7m"/>
 		<configuration configurationName="Release_hwpl_lpc17xx">
 			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
 		</configuration>
 		<configuration configurationName="build_release_mg_armv7m"/>
-		<configuration configurationName="Release_CoActionOS_lpc17xx">
+		<configuration configurationName="Release_AES_arm_eabi">
 			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
 		</configuration>
-		<configuration configurationName="Release_hwpl_lpc13uxx"/>
-		<configuration configurationName="build_debug_app_armv7em_fpu"/>
-		<configuration configurationName="build_release_link">
-			<resource resourceType="PROJECT" workspacePath="/SON"/>
-		</configuration>
-		<configuration configurationName="build_debug_armv7em"/>
-		<configuration configurationName="Multiple configurations">
-			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
-		</configuration>
+		<configuration configurationName="Release_fatfs_arm"/>
 		<configuration configurationName="Release_CoActionOS_lpc407x_8x"/>
-		<configuration configurationName="Release_CMSIS_DSP_lpc407x_8x"/>
-		<configuration configurationName="Release_hwpl_lpc407x_8x"/>
-		<configuration configurationName="build_release_app_armv7em_fpu"/>
-		<configuration configurationName="Release_eon_arm_cm4"/>
-		<configuration configurationName="build_release_hal_armv7m"/>
-		<configuration configurationName="build_debug_armv7m"/>
-		<configuration configurationName="Release_hwpl_lpc177x_8x"/>
+		<configuration configurationName="Release_fatfs_arm_cm4"/>
 		<configuration configurationName="Build (GNU)">
 			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
 		</configuration>
+		<configuration configurationName="build_debug_armv7em_fpu"/>
+		<configuration configurationName="build_release_app_armv7m"/>
+		<configuration configurationName="build_release_son_armv7em_fpu"/>
+		<configuration configurationName="Release_hwpl_lpc13xx"/>
+		<configuration configurationName="Release_speex_arm"/>
+		<configuration configurationName="build_release_armv7em"/>
+		<configuration configurationName="build_release_mg_armv7em_fpu"/>
+		<configuration configurationName="Release_mg_arm"/>
+		<configuration configurationName="Release_CMSIS_DSP_lpc407x_8x"/>
+		<configuration configurationName="build_release_link">
+			<resource resourceType="PROJECT" workspacePath="/SON"/>
+		</configuration>
+		<configuration configurationName="Release_eon_arm_cm4"/>
+		<configuration configurationName="Release_AES_link"/>
+		<configuration configurationName="build_debug_son_armv7em"/>
+		<configuration configurationName="Release_fatfs_arm_cm4_kernel"/>
+		<configuration configurationName="Release_CoActionOS_lpc17xx">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="build_debug_app_armv7em_fpu"/>
+		<configuration configurationName="Release_Codec2_arm"/>
+		<configuration configurationName="Release_AES_arm">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="build_release_hal_armv7m"/>
+		<configuration configurationName="build_debug_son_armv7em_fpu"/>
+		<configuration configurationName="Release_Codec2_arm_cm4"/>
+		<configuration configurationName="build_release_son_armv7m"/>
+		<configuration configurationName="Release_mg_arm_kernel"/>
+		<configuration configurationName="Release_hwpl_lpc13uxx"/>
+		<configuration configurationName="lpc17xx">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="Release_opus_arm"/>
+		<configuration configurationName="Release_CMSIS_DSP_lpc17xx"/>
+		<configuration configurationName="Release_hwpl_lpc82x"/>
+		<configuration configurationName="Multiple configurations">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="build_release"/>
+		<configuration configurationName="Release_mg_arm_cm4"/>
+		<configuration configurationName="Release_CoActionOS_lpc177x_8x"/>
+		<configuration configurationName="Release_hwpl_lpc177x_8x"/>
+		<configuration configurationName="build_debug_armv7em"/>
+		<configuration configurationName="build_release_son_armv7em"/>
+		<configuration configurationName="build_release_app_armv7em_fpu"/>
+		<configuration configurationName="build_debug_armv7m"/>
+		<configuration configurationName="Release_CoActionOS_link">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="Release_eon_arm_cm4_kernel"/>
+		<configuration configurationName="Release_eon_link"/>
+		<configuration configurationName="build_release_armv7m">
+			<resource resourceType="PROJECT" workspacePath="/SON"/>
+		</configuration>
+		<configuration configurationName="Default">
+			<resource resourceType="PROJECT" workspacePath="/CoActionOS-Applib"/>
+		</configuration>
+		<configuration configurationName="Release_mg_arm_cm4_kernel"/>
+		<configuration configurationName="Release_hwpl_lpc407x_8x"/>
+		<configuration configurationName="build_debug_son_armv7m"/>
+		<configuration configurationName="Release_AES_arm_cm4"/>
+		<configuration configurationName="build_release_armv7em_fpu"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings">
 		<doc-comment-owner id="org.eclipse.cdt.ui.doxygen">
