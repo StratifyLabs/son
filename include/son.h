@@ -8,6 +8,10 @@
 
 typedef u32 son_size_t;
 typedef u16 son_count_t;
+typedef int son_bool_t;
+
+#define TRUE 1
+#define FALSE 0
 
 #define SON_ACCESS_NAME_CAPACITY 64
 #define SON_ACCESS_NAME_SIZE (SON_ACCESS_NAME_CAPACITY-1)
@@ -15,6 +19,7 @@ typedef u16 son_count_t;
 #define SON_KEY_NAME_SIZE (SON_KEY_NAME_CAPACITY-1)
 
 #define SON_FLAG_HAS_JOURNAL (1<<0)
+
 
 
 typedef struct {
@@ -110,10 +115,20 @@ int son_write_open_data(son_t * h, const void * v, son_size_t size);
 int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity);
 int32_t son_read_num(son_t * h, const char * access);
 u32 son_read_unum(son_t * h, const char * access);
+
 float son_read_float(son_t * h, const char * access);
 int son_read_data(son_t * h, const char * access, void * data, son_size_t size);
 
 int son_seek(son_t * h, const char * access, son_size_t * data_size);
+
+int son_edit(son_t * h, const char * name);
+float son_edit_float(son_t * h, const char * key, float v);
+int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size);
+int son_edit_str(son_t * h, const char * key, const char *v);
+int son_edit_num(son_t *h, const char * key, int32_t v);
+int son_edit_unum(son_t * h, const char * key, u32 v);
+int son_edit_bool(son_t *h, const char * key, son_bool_t v);
+int log_values(char * error,char * val);
 
 
 #ifdef __cplusplus
