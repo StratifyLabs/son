@@ -52,6 +52,8 @@ void son_set_driver(son_t * h, void * handle){
 
 #endif
 
+
+
 u8 son_type(const son_store_t * eon){
 	return eon->type_flags & SON_TYPE_MASK;
 }
@@ -128,6 +130,19 @@ int son_open(son_t * h, const char * name){
 	}
 
 	return 0;
+}
+
+int son_edit(son_t * h, const char * name){
+    son_phy_t * phy;
+    phy = &(h->phy);
+
+	phy->f = fopen(name,"r+");
+
+	if( phy->f != 0){
+		return 0;
+	}
+
+	return -1;
 }
 
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
@@ -224,6 +239,7 @@ int son_write_num(son_t * h, const char * key, int32_t v){
 	return son_write_raw_data(h, key, SON_NUMBER_S32, &v, sizeof(v));
 }
 
+
 int son_write_unum(son_t * h, const char * key, u32 v){
 	return son_write_raw_data(h, key, SON_NUMBER_U32, &v, sizeof(v));
 }
@@ -264,6 +280,7 @@ int son_write_raw_data(son_t * h, const char * key, son_marker_t type, const voi
 	if( son_phy_write(&(h->phy), &eon, sizeof(son_store_t)) < 0 ){
 		return -1;
 	}
+
 
 	return son_phy_write(&(h->phy), v, size);
 }
@@ -704,3 +721,195 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 	}
 }
 
+int son_edit_bool(son_t * h, const char * key, son_bool_t v){
+	son_store_t eon;
+	son_size_t data_size;
+
+	int read_length;
+	char buffer[SON_BUFFER_SIZE];
+
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&eon);
+
+	if(read_length < 0){
+		return -1;
+	}
+
+	if(son_seek_store(h,key,&eon,&data_size) < 0){
+		return -1;
+	}
+
+	return 0;
+	//return son_phy_write(&(h->phy),v,read_length);
+}
+
+float son_edit_float(son_t * h, const char * key, float v){
+	son_store_t eon;
+	son_size_t data_size;
+
+	int read_length;
+	char buffer[SON_BUFFER_SIZE];
+	//char str_value[10];
+
+	//float * t =  v;
+
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+
+	if(read_length < 0){
+		return -1;
+	}
+
+	if(son_seek_store(h,key,&eon,&data_size) < 0){
+		return -1;
+	}
+
+	return 0;
+	//return son_phy_write(&(h->phy),v,read_length);
+}
+
+int son_edit_unum(son_t * h, const char * key, u32 v){
+	son_store_t eon;
+	son_size_t data_size;
+
+	int read_length;
+	char buffer[SON_BUFFER_SIZE];
+	//char str_value[10];
+
+	u32 * t = (void *) v;
+
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+
+	if(read_length < 0){
+		return -1;
+	}
+
+	if(son_seek_store(h,key,&eon,&data_size) < 0){
+		return -1;
+	}
+
+	return son_phy_write(&(h->phy),&t,read_length);
+
+}
+
+
+int son_edit_num(son_t * h, const char * key, int32_t v){
+	son_store_t eon;
+	son_size_t data_size;
+	int read_length;
+	char buffer[SON_BUFFER_SIZE];
+	//char  str_value[10];
+
+    int32_t * t = (void *) v;
+
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+
+
+	if(read_length < 0){
+		return -1;
+	}
+
+
+	if(son_seek_store(h,key,&eon,&data_size)<0){
+		return -1;
+	}
+
+    return son_phy_write(&(h->phy),&t,read_length);
+
+}
+
+int son_edit_str(son_t * h, const char * key, const char * v){
+	son_store_t eon;
+	son_size_t data_size;
+
+	int read_length;
+	int write_length;
+	int read_write_diff;
+	char buffer_empty[SON_BUFFER_SIZE];
+	char buffer[SON_BUFFER_SIZE];
+
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+
+	if (read_length < 0) {
+		return -1;
+	}
+
+	write_length = strlen(v);
+
+	if(write_length > read_length){
+		return -1;
+	}
+
+	read_write_diff = abs(read_length-write_length);
+
+	if( son_seek_store(h,key,&eon,&data_size ) < 0){
+		return -1;
+	}
+
+	memset(buffer_empty,' ',read_write_diff);
+	memset(buffer,0,read_length);
+	strcpy(buffer,(char*) v);
+	strncpy(buffer,buffer_empty,read_write_diff);
+
+	return son_phy_write(&(h->phy),buffer,strlen(buffer));
+}
+
+int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
+
+	son_size_t data_size;
+
+    son_store_t eon;
+
+    char buffer[SON_BUFFER_SIZE];
+    char  str_value[10];
+    int read_length;
+    int write_length;
+    int read_write_diff;
+    char empty_buffer[SON_BUFFER_SIZE];
+
+
+    read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+    write_length = strlen(data);
+    if (read_length < 0){
+       return -1;
+    }
+
+
+
+    sprintf(str_value,"%d",read_length);
+    log_values("read length",str_value);
+    memset(str_value,0,10);
+    sprintf(str_value,"%d",write_length);
+    log_values("write length",str_value);
+    memset(str_value,0,10);
+    read_write_diff = abs(write_length-read_length);
+    sprintf(str_value,"%d",read_write_diff);
+    log_values("difference",str_value);
+    log_values("calling son_seek_store","");
+
+    if(write_length > read_length){
+    	return -1;
+    }
+
+    if(son_seek_store(h,key,&eon,&data_size) < 0){
+    	return -1;
+    }
+
+    memset(empty_buffer,' ',read_write_diff);
+    memset(buffer,0,read_length);
+    strcpy(buffer,(char*)data);
+    strncat(buffer,empty_buffer,read_write_diff);
+    log_values("son_phy_write",buffer);
+    return son_phy_write(&(h->phy),buffer,strlen(buffer));
+
+}
+
+int log_values(char * error,char * val){
+	FILE *fp;
+
+	fp = fopen("/Users/nkgau/Desktop/sonlog.txt","a+");
+	if(fp == NULL){
+		return -1;
+	}
+    fprintf(fp,"\n%s - %s\n",error,val);
+    fclose(fp);
+    return 0;
+}
