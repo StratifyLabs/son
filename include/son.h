@@ -115,9 +115,9 @@ int son_write_open_data(son_t * h, const void * v, son_size_t size);
 int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity);
 int32_t son_read_num(son_t * h, const char * access);
 u32 son_read_unum(son_t * h, const char * access);
-
 float son_read_float(son_t * h, const char * access);
 int son_read_data(son_t * h, const char * access, void * data, son_size_t size);
+son_bool_t son_read_bool(son_t *h, const char * key);
 
 int son_seek(son_t * h, const char * access, son_size_t * data_size);
 

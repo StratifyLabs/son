@@ -576,6 +576,27 @@ int son_read_data(son_t * h, const char * access, void * data, son_size_t size){
 	return son_read_raw_data(h, access, data, size, &eon);
 }
 
+son_bool_t son_read_bool(son_t *h, const char * key){
+	int data_size;
+	son_store_t eon;
+	//son_type_t ptype;
+	char buffer[SON_BUFFER_SIZE];
+
+	data_size = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&eon);
+
+	if(data_size < 0){
+		return -1;
+	}
+
+	//ptype.cdata = buffer;
+
+	switch(son_type(&eon)){
+	case SON_TRUE: return TRUE;
+	case SON_FALSE: return FALSE;
+	}
+
+	return 0;
+}
 static void print_indent(int indent, son_phy_t * phy){
 	int i;
 	for(i=0; i < indent; i++){ son_fprintf(phy, "\t"); }
@@ -722,9 +743,9 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 }
 
 int son_edit_bool(son_t * h, const char * key, son_bool_t v){
+	size_t pos;
 	son_store_t eon;
-	son_size_t data_size;
-
+    son_marker_t type;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
@@ -734,12 +755,23 @@ int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 		return -1;
 	}
 
-	if(son_seek_store(h,key,&eon,&data_size) < 0){
+	if (v == TRUE){
+		type = SON_TRUE;
+	}
+	else if (v == FALSE){
+		type = SON_FALSE;
+	}
+	else{
 		return -1;
 	}
 
-	return 0;
-	//return son_phy_write(&(h->phy),v,read_length);
+	son_set_type(&eon,type,0);
+
+	pos = son_phy_lseek(&(h->phy),-sizeof(eon),SON_SEEK_CUR);
+	son_set_next(&eon,pos+sizeof(son_store_t));
+
+	return son_phy_write(&(h->phy),&eon,sizeof(son_store_t));
+
 }
 
 float son_edit_float(son_t * h, const char * key, float v){
@@ -748,9 +780,8 @@ float son_edit_float(son_t * h, const char * key, float v){
 
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
-	//char str_value[10];
 
-	//float * t =  v;
+	float  t = v;
 
 	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
 
@@ -762,8 +793,7 @@ float son_edit_float(son_t * h, const char * key, float v){
 		return -1;
 	}
 
-	return 0;
-	//return son_phy_write(&(h->phy),v,read_length);
+	return son_phy_write(&(h->phy),&t,read_length);
 }
 
 int son_edit_unum(son_t * h, const char * key, u32 v){
@@ -772,7 +802,6 @@ int son_edit_unum(son_t * h, const char * key, u32 v){
 
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
-	//char str_value[10];
 
 	u32 * t = (void *) v;
 
@@ -790,13 +819,12 @@ int son_edit_unum(son_t * h, const char * key, u32 v){
 
 }
 
-
 int son_edit_num(son_t * h, const char * key, int32_t v){
 	son_store_t eon;
 	son_size_t data_size;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
-	//char  str_value[10];
+
 
     int32_t * t = (void *) v;
 
@@ -853,18 +881,14 @@ int son_edit_str(son_t * h, const char * key, const char * v){
 }
 
 int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
-
 	son_size_t data_size;
-
     son_store_t eon;
-
     char buffer[SON_BUFFER_SIZE];
-    char  str_value[10];
+
     int read_length;
     int write_length;
     int read_write_diff;
     char empty_buffer[SON_BUFFER_SIZE];
-
 
     read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
     write_length = strlen(data);
@@ -872,18 +896,7 @@ int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
        return -1;
     }
 
-
-
-    sprintf(str_value,"%d",read_length);
-    log_values("read length",str_value);
-    memset(str_value,0,10);
-    sprintf(str_value,"%d",write_length);
-    log_values("write length",str_value);
-    memset(str_value,0,10);
     read_write_diff = abs(write_length-read_length);
-    sprintf(str_value,"%d",read_write_diff);
-    log_values("difference",str_value);
-    log_values("calling son_seek_store","");
 
     if(write_length > read_length){
     	return -1;
@@ -895,11 +908,10 @@ int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
 
     memset(empty_buffer,' ',read_write_diff);
     memset(buffer,0,read_length);
-    strcpy(buffer,(char*)data);
+    strcpy(buffer,data);
     strncat(buffer,empty_buffer,read_write_diff);
-    log_values("son_phy_write",buffer);
-    return son_phy_write(&(h->phy),buffer,strlen(buffer));
 
+    return son_phy_write(&(h->phy),buffer,strlen(buffer));
 }
 
 int log_values(char * error,char * val){
