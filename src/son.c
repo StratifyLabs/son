@@ -125,6 +125,10 @@ static int son_write_close_marker(son_t * h){
 
 int son_open(son_t * h, const char * name){
 
+	h->stack_loc = 0;
+	h->stack = 0;
+	h->stack_size = 0;
+
 	if( son_phy_open(&(h->phy), name, SON_O_RDONLY, 0666) < 0 ){
 		return -1;
 	}
@@ -133,16 +137,18 @@ int son_open(son_t * h, const char * name){
 }
 
 int son_edit(son_t * h, const char * name){
-    son_phy_t * phy;
-    phy = &(h->phy);
+	son_phy_t * phy;
+	phy = &(h->phy);
 
-	phy->f = fopen(name,"r+");
+	h->stack_loc = 0;
+	h->stack = 0;
+	h->stack_size = 0;
 
-	if( phy->f != 0){
-		return 0;
+	if( son_phy_open(phy, name, SON_O_RDWR, 0) < 0 ){
+		return -1;
 	}
 
-	return -1;
+	return 0;
 }
 
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
@@ -190,9 +196,11 @@ int son_close(son_t * h, int close_all){
 		return 0;
 	}
 
-	if( close_all ){
-		while( h->stack_loc > 0 ){
-			son_write_close_marker(h);
+	if( h->stack != 0 ){
+		if( close_all ){
+			while( h->stack_loc > 0 ){
+				son_write_close_marker(h);
+			}
 		}
 	}
 
@@ -271,8 +279,14 @@ int son_write_open_data(son_t * h, const void * v, son_size_t size){
 int son_write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size){
 	size_t pos;
 	son_store_t eon;
+
+	if( h->stack_size == 0 ){
+		return -1;
+	}
+
 	son_insert_key(&eon, key);
 	son_set_type(&eon, type, 0);
+
 
 	pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
 	son_set_next(&eon, pos + sizeof(son_store_t) + size);
@@ -745,7 +759,7 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 	size_t pos;
 	son_store_t eon;
-    son_marker_t type;
+	son_marker_t type;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
@@ -767,7 +781,7 @@ int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 
 	son_set_type(&eon,type,0);
 
-	pos = son_phy_lseek(&(h->phy),-sizeof(eon),SON_SEEK_CUR);
+	pos = son_phy_lseek(&(h->phy),-1*(s32)sizeof(eon),SON_SEEK_CUR);
 	son_set_next(&eon,pos+sizeof(son_store_t));
 
 	return son_phy_write(&(h->phy),&eon,sizeof(son_store_t));
@@ -803,8 +817,6 @@ int son_edit_unum(son_t * h, const char * key, u32 v){
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
-	u32 * t = (void *) v;
-
 	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
 
 	if(read_length < 0){
@@ -815,7 +827,7 @@ int son_edit_unum(son_t * h, const char * key, u32 v){
 		return -1;
 	}
 
-	return son_phy_write(&(h->phy),&t,read_length);
+	return son_phy_write(&(h->phy),&v,read_length);
 
 }
 
@@ -825,8 +837,6 @@ int son_edit_num(son_t * h, const char * key, int32_t v){
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
-
-    int32_t * t = (void *) v;
 
 	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
 
@@ -840,7 +850,7 @@ int son_edit_num(son_t * h, const char * key, int32_t v){
 		return -1;
 	}
 
-    return son_phy_write(&(h->phy),&t,read_length);
+	return son_phy_write(&(h->phy),&v,read_length);
 
 }
 
@@ -882,36 +892,36 @@ int son_edit_str(son_t * h, const char * key, const char * v){
 
 int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
 	son_size_t data_size;
-    son_store_t eon;
-    char buffer[SON_BUFFER_SIZE];
+	son_store_t eon;
+	char buffer[SON_BUFFER_SIZE];
 
-    int read_length;
-    int write_length;
-    int read_write_diff;
-    char empty_buffer[SON_BUFFER_SIZE];
+	int read_length;
+	int write_length;
+	int read_write_diff;
+	char empty_buffer[SON_BUFFER_SIZE];
 
-    read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
-    write_length = strlen(data);
-    if (read_length < 0){
-       return -1;
-    }
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	write_length = strlen(data);
+	if (read_length < 0){
+		return -1;
+	}
 
-    read_write_diff = abs(write_length-read_length);
+	read_write_diff = abs(write_length-read_length);
 
-    if(write_length > read_length){
-    	return -1;
-    }
+	if(write_length > read_length){
+		return -1;
+	}
 
-    if(son_seek_store(h,key,&eon,&data_size) < 0){
-    	return -1;
-    }
+	if(son_seek_store(h,key,&eon,&data_size) < 0){
+		return -1;
+	}
 
-    memset(empty_buffer,' ',read_write_diff);
-    memset(buffer,0,read_length);
-    strcpy(buffer,data);
-    strncat(buffer,empty_buffer,read_write_diff);
+	memset(empty_buffer,' ',read_write_diff);
+	memset(buffer,0,read_length);
+	strcpy(buffer,data);
+	strncat(buffer,empty_buffer,read_write_diff);
 
-    return son_phy_write(&(h->phy),buffer,strlen(buffer));
+	return son_phy_write(&(h->phy),buffer,strlen(buffer));
 }
 
 int log_values(char * error,char * val){
@@ -921,7 +931,7 @@ int log_values(char * error,char * val){
 	if(fp == NULL){
 		return -1;
 	}
-    fprintf(fp,"\n%s - %s\n",error,val);
-    fclose(fp);
-    return 0;
+	fprintf(fp,"\n%s - %s\n",error,val);
+	fclose(fp);
+	return 0;
 }
