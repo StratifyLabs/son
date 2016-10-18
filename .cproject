@@ -11,11 +11,11 @@
 					<stringMacro name="HOST" type="VALUE_TEXT" value="."/>
 					<stringMacro name="CXX_linux" type="VALUE_TEXT" value="g++"/>
 					<stringMacro name="RM_win32" type="VALUE_TEXT" value="${INSTALLPATH}/${HOST}/lib/ldscripts/clean.bat"/>
-					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt\Tools\mingw492_32"/>
+					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt\Qt5.7.0\Tools\mingw530_32"/>
 					<stringMacro name="POSTPROCESS_win64" type="VALUE_TEXT" value="${POSTPROCESS_win32}"/>
 					<stringMacro name="INSTALLPATH_macosx" type="VALUE_TEXT" value="${TOOLSPATH_macosx}"/>
 					<stringMacro name="CXX_win64" type="VALUE_TEXT" value="${CXX_win32}"/>
-					<stringMacro name="CC_win32" type="VALUE_TEXT" value="i686-w64-mingw32-gcc"/>
+					<stringMacro name="CC_win32" type="VALUE_TEXT" value="gcc"/>
 					<stringMacro name="SL" type="VALUE_TEXT" value="${DirectoryDelimiter}"/>
 					<stringMacro name="POSTPROCESS_linux" type="VALUE_TEXT" value="${POSTPROCESS_macosx}"/>
 					<stringMacro name="BUILD_DEVICE" type="VALUE_TEXT" value="link"/>
@@ -28,7 +28,7 @@
 					<stringMacro name="RM_win64" type="VALUE_TEXT" value="${RM_win32}"/>
 					<stringMacro name="TOOLSPATH_linux" type="VALUE_TEXT" value="${TOOLSPATH_macosx}"/>
 					<stringMacro name="RM_linux" type="VALUE_TEXT" value="${RM_macosx}"/>
-					<stringMacro name="CXX_win32" type="VALUE_TEXT" value="i686-w64-mingw32-g++"/>
+					<stringMacro name="CXX_win32" type="VALUE_TEXT" value="g++"/>
 					<stringMacro name="POSTPROCESS_win32" type="VALUE_TEXT" value="${INSTALLPATH}/${HOST}/lib/ldscripts/lib-post-process.bat"/>
 					<stringMacro name="CC_win64" type="VALUE_TEXT" value="${CC_win32}"/>
 					<stringMacro name="RM_macosx" type="VALUE_TEXT" value="rm -rf"/>
@@ -58,7 +58,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="${RM}" description="" errorParsers="org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903" name="build_release_link" parent="cdt.managedbuild.config.gnu.cross.lib.release" postannouncebuildStep="" postbuildStep="${POSTPROCESS} ${TOOLSPATH} ${HOST} Project ${BUILD_NAME} ${BUILD_ARCH} ${BUILD_FLOAT} stfy ${BUILD_TYPE}" preannouncebuildStep="" prebuildStep="">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="${RM}" description="" errorParsers="org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903" name="build_release_link" parent="cdt.managedbuild.config.gnu.cross.lib.release" postannouncebuildStep="" postbuildStep="${POSTPROCESS} ${INSTALLPATH} ${HOST} Project ${BUILD_NAME} ${BUILD_ARCH} ${BUILD_FLOAT} stfy ${BUILD_TYPE}" preannouncebuildStep="" prebuildStep="">
 					<folderInfo id="cdt.managedbuild.config.gnu.cross.lib.release.388924090.1536021794.652448319.1742192579.1428311154.1531651903." name="/" resourcePath="">
 						<toolChain errorParsers="" id="cdt.managedbuild.toolchain.gnu.cross.lib.release.679235776" name="Cross GCC" nonInternalBuilderId="cdt.managedbuild.builder.gnu.cross" superClass="cdt.managedbuild.toolchain.gnu.cross.lib.release">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1483384405" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" useByScannerDiscovery="false" value="" valueType="string"/>
@@ -85,6 +85,7 @@
 								<option id="gnu.c.compiler.option.include.paths.251026536" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${TOOLSPATH}/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${INSTALLPATH}/include&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.381601933" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__${BUILD_NAME}"/>
@@ -548,7 +549,7 @@
 					<stringMacro name="HOST" type="VALUE_TEXT" value="."/>
 					<stringMacro name="CXX_linux" type="VALUE_TEXT" value="g++"/>
 					<stringMacro name="RM_win32" type="VALUE_TEXT" value="${INSTALLPATH}/${HOST}/lib/ldscripts/clean.bat"/>
-					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt-5.6\Tools\mingw492_32"/>
+					<stringMacro name="TOOLSPATH_win32" type="VALUE_TEXT" value="C:\Qt\Qt5.7.0\Tools\mingw530_32"/>
 					<stringMacro name="POSTPROCESS_win64" type="VALUE_TEXT" value="${POSTPROCESS_win32}"/>
 					<stringMacro name="INSTALLPATH_macosx" type="VALUE_TEXT" value="${TOOLSPATH_macosx}"/>
 					<stringMacro name="CXX_win64" type="VALUE_TEXT" value="${CXX_win32}"/>

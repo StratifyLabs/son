@@ -7,6 +7,10 @@
 #include <mcu/types.h>
 #else
 //need to define u32, s32, u16, s16, etc
+
+#if defined __link
+#include <iface/link.h>
+#else
 #include <stdint.h>
 typedef uint8_t u8;
 typedef int8_t s8;
@@ -18,15 +22,12 @@ typedef uint64_t u64;
 typedef int64_t s64;
 #define MCU_PACK __attribute__((packed))
 #endif
+#endif
 
 #include <sys/types.h>
 #include <stdio.h>
 
 #if !defined __StratifyOS__
-
-#if defined __link
-#include <iface/link.h>
-#endif
 
 typedef struct {
 	FILE * f;
