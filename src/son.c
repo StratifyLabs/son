@@ -719,20 +719,20 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 				son_fprintf(phy, "\"%s\"", buffer);
 			} else if ( type == SON_FLOAT ){
 				float * value = (float*)buffer;
-				son_fprintf(phy, "\"%f\"", *value);
+				son_fprintf(phy, "%f", *value);
 			} else if ( type == SON_NUMBER_U32 ){
 				u32 * value = (u32*)buffer;
 #if !defined __StratifyOS__
-				son_fprintf(phy, "\"%d\"", *value);
+				son_fprintf(phy, "%d", *value);
 #else
-				son_fprintf(phy, "\"%ld\"", *value);
+				son_fprintf(phy, "%ld", *value);
 #endif
 			} else if ( type == SON_NUMBER_S32 ){
 				int32_t * value = (int32_t*)buffer;
 #if !defined __StratifyOS__
-				son_fprintf(phy, "\"%d\"", *value);
+				son_fprintf(phy, "%d", *value);
 #else
-				son_fprintf(phy, "\"%ld\"", *value);
+				son_fprintf(phy, "%ld", *value);
 #endif
 			} else if ( type == SON_TRUE ){
 				son_fprintf(phy, "true");

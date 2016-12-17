@@ -13,3 +13,5 @@
 /build_debug_armv7m/
 /build_debug_armv7em_fpu/
 /build_release/
+
+*.user
