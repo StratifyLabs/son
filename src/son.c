@@ -1,9 +1,4 @@
-/*
- * eon.c
- *
- *  Created on: Dec 3, 2015
- *      Author: tgil
- */
+/*! \file */ //Copyright 2011-2016 Tyler Gilbert; All Rights Reserved
 
 
 #include <stdio.h>
@@ -21,8 +16,8 @@
 
 
 static void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
-static int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t * data_size);
-static void son_insert_key(son_store_t * eon, const char * key);
+static int son_seek_store(son_t * h, const char * access, son_store_t * son, son_size_t * data_size);
+static void son_insert_key(son_store_t * son, const char * key);
 static int son_write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size);
 static int son_write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size);
 static int son_write_close_marker(son_t * h);
@@ -54,26 +49,26 @@ void son_set_driver(son_t * h, void * handle){
 
 
 
-u8 son_type(const son_store_t * eon){
-	return eon->type_flags & SON_TYPE_MASK;
+u8 son_type(const son_store_t * son){
+	return son->o_flags & SON_TYPE_MASK;
 }
 
-u8 son_fixed_array_size(const son_store_t * eon){
-	return (eon->type_flags & SON_FIXED_ARRAY_FLAG) != 0;
+u8 son_fixed_array_size(const son_store_t * son){
+	return (son->o_flags & SON_FIXED_ARRAY_FLAG) != 0;
 }
 
-void son_set_type(son_store_t * eon, u8 type, u8 fixed_array_size){
-	eon->type_flags = (type & SON_TYPE_MASK) | (fixed_array_size ? SON_FIXED_ARRAY_FLAG : 0);
+void son_set_type(son_store_t * son, u8 type, u8 fixed_array_size){
+	son->o_flags = (type & SON_TYPE_MASK) | (fixed_array_size ? SON_FIXED_ARRAY_FLAG : 0);
 }
 
 
-u32 son_next(const son_store_t * eon){
-	return eon->pos.page*65536 + eon->pos.page_offset;
+u32 son_next(const son_store_t * son){
+	return son->pos.page*65536 + son->pos.page_offset;
 }
 
-void son_set_next(son_store_t * eon, u32 offset){
-	eon->pos.page = offset >> 16;
-	eon->pos.page_offset = offset & 0xFFFF;
+void son_set_next(son_store_t * son, u32 offset){
+	son->pos.page = offset >> 16;
+	son->pos.page_offset = offset & 0xFFFF;
 }
 
 int son_write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size){
@@ -101,19 +96,19 @@ int son_write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size){
 static int son_write_close_marker(son_t * h){
 	son_size_t pos;
 	son_size_t current;
-	son_store_t eon;
+	son_store_t son;
 	//write the size of the object
 	if( h->stack_loc > 0 ){
 		h->stack_loc--;
 		pos = h->stack[h->stack_loc].pos;
 		current = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
 
-		son_set_next(&eon, current);
+		son_set_next(&son, current);
 
 		if( son_phy_lseek(&(h->phy), pos + offsetof(son_store_t, pos), SON_SEEK_SET) < 0 ){
 			return -1;
 		}
-		if( son_phy_write(&(h->phy), &eon.pos, sizeof(son_pos_t)) < 0 ){
+		if( son_phy_write(&(h->phy), &son.pos, sizeof(son_pos_t)) < 0 ){
 			return -1;
 		}
 		if( son_phy_lseek(&(h->phy), current, SON_SEEK_SET) < 0 ){
@@ -226,9 +221,9 @@ int son_close_data(son_t * h){
 	return son_write_close_marker(h);
 }
 
-void son_insert_key(son_store_t * eon, const char * key){
-	memset(eon->key.name, 0, SON_KEY_NAME_CAPACITY);
-	strncpy((char*)eon->key.name, key, SON_KEY_NAME_SIZE);
+void son_insert_key(son_store_t * son, const char * key){
+	memset(son->key.name, 0, SON_KEY_NAME_CAPACITY);
+	strncpy((char*)son->key.name, key, SON_KEY_NAME_SIZE);
 }
 
 int son_open_array(son_t * h, const char * key, int fixed_size){
@@ -278,20 +273,20 @@ int son_write_open_data(son_t * h, const void * v, son_size_t size){
 
 int son_write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size){
 	size_t pos;
-	son_store_t eon;
+	son_store_t son;
 
 	if( h->stack_size == 0 ){
 		return -1;
 	}
 
-	son_insert_key(&eon, key);
-	son_set_type(&eon, type, 0);
+	son_insert_key(&son, key);
+	son_set_type(&son, type, 0);
 
 
 	pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
-	son_set_next(&eon, pos + sizeof(son_store_t) + size);
+	son_set_next(&son, pos + sizeof(son_store_t) + size);
 
-	if( son_phy_write(&(h->phy), &eon, sizeof(son_store_t)) < 0 ){
+	if( son_phy_write(&(h->phy), &son, sizeof(son_store_t)) < 0 ){
 		return -1;
 	}
 
@@ -316,7 +311,7 @@ int son_token_is_array(char * tok, son_size_t * index){
 	return 1;
 }
 
-int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * eon, son_size_t * size){
+int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * son, son_size_t * size){
 	son_size_t pos;
 	son_size_t data_size;
 	son_size_t array_data_size;
@@ -324,17 +319,17 @@ int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * e
 	son_size_t next;
 
 	pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
-	array_data_size = son_next(eon) - pos;
+	array_data_size = son_next(son) - pos;
 
 	if( fixed_size ){
-		if( son_phy_read(&(h->phy), eon, sizeof(son_store_t)) < 0 ){
+		if( son_phy_read(&(h->phy), son, sizeof(son_store_t)) < 0 ){
 			return 0;
 		}
-		data_size = son_next(eon) - pos;
+		data_size = son_next(son) - pos;
 		if( ind > 0 ){
 			if( ((ind+1) * data_size) < array_data_size){
 				son_phy_lseek(&(h->phy), pos + ind*data_size, SON_SEEK_SET);
-				son_phy_read(&(h->phy), eon, sizeof(son_store_t));
+				son_phy_read(&(h->phy), son, sizeof(son_store_t));
 			} else {
 				return 0;
 			}
@@ -344,13 +339,13 @@ int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * e
 		return 1;
 	} else {
 		for(i=0; i <= ind; i++){
-			if( son_phy_read(&(h->phy), eon, sizeof(son_store_t)) <= 0 ){
+			if( son_phy_read(&(h->phy), son, sizeof(son_store_t)) <= 0 ){
 				return 0;
 			}
 			pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
 
 
-			next = son_next(eon);
+			next = son_next(son);
 
 			if( next == 0 ){
 				return 0;
@@ -361,45 +356,53 @@ int son_seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * e
 			}
 		}
 
-		*size = son_next(eon) - pos;
+		*size = son_next(son) - pos;
 
 		return 1;
 	}
 	return 0;
 }
 
-
 int son_seek_key(son_t * h, const char * name, son_store_t * ob, son_size_t * size){
-	son_store_t eon;
+	son_store_t son;
 	size_t pos;
+	u32 next;
 	int ret;
 
 	*size = 0;
 
-	do {
-		if( (ret = son_phy_read(&(h->phy), &eon, sizeof(son_store_t))) > 0 ){
-			pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
+	while( (ret = son_phy_read(&(h->phy), &son, sizeof(son_store_t))) > 0 ){
 
-			if( son_next(&eon) > 0 ){
-				*size = son_next(&eon) - pos;
-			}
+		next = son_next(&son);
 
-			if( strcmp(name, (char*)eon.key.name) == 0 ){
-				*ob = eon;
-				return 1;
-			}
-			if( son_next(&eon) > 0 ){
-				son_phy_lseek(&(h->phy), son_next(&eon), SON_SEEK_SET);
-			} else {
-				return 0;
-			}
+		//check to see if son is a valid object
+		if( (son.key.name[0] == 0) ){
+			//this is not a valid son object or is the end of the file
+			return 0;
 		}
-	} while(ret > 0);
+
+		pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
+
+		//if next is 0, then the object hasn't been closed yet (and must be an array or object marker)
+		if( next > 0 ){
+			*size = next - pos;
+		}
+
+		if( strcmp(name, (char*)son.key.name) == 0 ){
+			*ob = son;
+			return 1;
+		}
+
+		//seek to the next object
+		if( next > 0 ){
+			son_phy_lseek(&(h->phy), next, SON_SEEK_SET);
+		}
+	}
 
 	return 0;
 }
 
-int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t * data_size){
+int son_seek_store(son_t * h, const char * access, son_store_t * son, son_size_t * data_size){
 	char acc[SON_ACCESS_NAME_CAPACITY];
 	char * str;
 	char * tok;
@@ -419,10 +422,10 @@ int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t
 		if( son_token_is_array(acc_item, &ind) ){
 
 			//search for token then array index
-			if( son_seek_key(h, acc_item, eon, data_size) ){
+			if( son_seek_key(h, acc_item, son, data_size) ){
 				//now found the array object
 
-				if( son_seek_array_key(h, ind, son_fixed_array_size(eon), eon, data_size) == 0){
+				if( son_seek_array_key(h, ind, son_fixed_array_size(son), son, data_size) == 0){
 					return -1;
 				}
 
@@ -432,7 +435,7 @@ int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t
 
 		} else {
 			//search for token
-			if( son_seek_key(h, tok, eon, data_size) == 0 ){
+			if( son_seek_key(h, tok, son, data_size) == 0 ){
 				return -1;
 			}
 		}
@@ -442,18 +445,18 @@ int son_seek_store(son_t * h, const char * access, son_store_t * eon, son_size_t
 }
 
 int son_seek(son_t * h, const char * access, son_size_t * data_size){
-	son_store_t eon;
-	if( son_seek_store(h, access, &eon, data_size) < 0 ){
+	son_store_t son;
+	if( son_seek_store(h, access, &son, data_size) < 0 ){
 		return -1;
 	}
 
 	return son_phy_lseek(&(h->phy), 0, SEEK_CUR);
 }
 
-int son_read_raw_data(son_t * h, const char * access, void * data, son_size_t size, son_store_t * eon){
+int son_read_raw_data(son_t * h, const char * access, void * data, son_size_t size, son_store_t * son){
 	son_size_t data_size;
 
-	if( son_seek_store(h, access, eon, &data_size) < 0 ){
+	if( son_seek_store(h, access, son, &data_size) < 0 ){
 		return -1;
 	}
 
@@ -471,11 +474,11 @@ int son_read_raw_data(son_t * h, const char * access, void * data, son_size_t si
 
 int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity){
 	int data_size;
-	son_store_t eon;
+	son_store_t son;
 	son_type_t ptype;
 	char buffer[SON_BUFFER_SIZE];
 
-	data_size = son_read_raw_data(h, access, str, capacity, &eon);
+	data_size = son_read_raw_data(h, access, str, capacity, &son);
 	if( data_size < 0 ){
 		return -1;
 	}
@@ -483,7 +486,7 @@ int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity
 	ptype.cdata = str;
 	memset(buffer, 0, SON_BUFFER_SIZE);
 
-	switch(son_type(&eon)){
+	switch(son_type(&son)){
 	case SON_FLOAT: snprintf(buffer, 32, "%f", *(ptype.f)); break;
 	case SON_NUMBER_U32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_u32)); break;
 	case SON_NUMBER_S32: snprintf(buffer, 32, SON_PRINTF_INT, *(ptype.n_s32)); break;
@@ -506,18 +509,18 @@ int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity
 
 int32_t son_read_num(son_t * h, const char * access){
 	int data_size;
-	son_store_t eon;
+	son_store_t son;
 	son_type_t ptype;
 	char buffer[SON_BUFFER_SIZE];
 
-	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &eon);
+	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &son);
 	if( data_size < 0 ){
 		return -1;
 	}
 
 	ptype.cdata = buffer;
 
-	switch(son_type(&eon)){
+	switch(son_type(&son)){
 	case SON_FLOAT: return (int)*(ptype.f);
 	case SON_NUMBER_U32: return *(ptype.n_u32);
 	case SON_NUMBER_S32: return *(ptype.n_s32);
@@ -533,18 +536,18 @@ int32_t son_read_num(son_t * h, const char * access){
 
 u32 son_read_unum(son_t * h, const char * access){
 	int data_size;
-	son_store_t eon;
+	son_store_t son;
 	son_type_t ptype;
 	char buffer[SON_BUFFER_SIZE];
 
-	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &eon);
+	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &son);
 	if( data_size < 0 ){
 		return -1;
 	}
 
 	ptype.cdata = buffer;
 
-	switch(son_type(&eon)){
+	switch(son_type(&son)){
 	case SON_FLOAT: return (int)*(ptype.f);
 	case SON_NUMBER_U32: return *(ptype.n_u32);
 	case SON_NUMBER_S32: return *(ptype.n_s32);
@@ -560,18 +563,18 @@ u32 son_read_unum(son_t * h, const char * access){
 
 float son_read_float(son_t * h, const char * access){
 	int data_size;
-	son_store_t eon;
+	son_store_t son;
 	son_type_t ptype;
 	char buffer[SON_BUFFER_SIZE];
 
-	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &eon);
+	data_size = son_read_raw_data(h, access, buffer, SON_BUFFER_SIZE, &son);
 	if( data_size < 0 ){
 		return -1;
 	}
 
 	ptype.cdata = buffer;
 
-	switch(son_type(&eon)){
+	switch(son_type(&son)){
 	case SON_FLOAT: return *(ptype.f);
 	case SON_NUMBER_U32: return *(ptype.n_u32);
 	case SON_NUMBER_S32: return *(ptype.n_s32);
@@ -586,17 +589,17 @@ float son_read_float(son_t * h, const char * access){
 }
 
 int son_read_data(son_t * h, const char * access, void * data, son_size_t size){
-	son_store_t eon;
-	return son_read_raw_data(h, access, data, size, &eon);
+	son_store_t son;
+	return son_read_raw_data(h, access, data, size, &son);
 }
 
 son_bool_t son_read_bool(son_t *h, const char * key){
 	int data_size;
-	son_store_t eon;
+	son_store_t son;
 	//son_type_t ptype;
 	char buffer[SON_BUFFER_SIZE];
 
-	data_size = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&eon);
+	data_size = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&son);
 
 	if(data_size < 0){
 		return -1;
@@ -604,7 +607,7 @@ son_bool_t son_read_bool(son_t *h, const char * key){
 
 	//ptype.cdata = buffer;
 
-	switch(son_type(&eon)){
+	switch(son_type(&son)){
 	case SON_TRUE: return TRUE;
 	case SON_FALSE: return FALSE;
 	}
@@ -619,16 +622,16 @@ static void print_indent(int indent, son_phy_t * phy){
 int son_to_json(son_t * h, const char * path){
 	int is_array;
 
-	son_store_t eon;
+	son_store_t son;
 	son_phy_t phy;
 
 	memset(&phy, 0, sizeof(phy));
 
 	u8 type;
 
-	son_phy_read(&(h->phy), &eon, sizeof(son_store_t));
+	son_phy_read(&(h->phy), &son, sizeof(son_store_t));
 
-	type = son_type(&eon);
+	type = son_type(&son);
 
 	if( type == SON_OBJ ){
 		is_array = 0;
@@ -644,7 +647,7 @@ int son_to_json(son_t * h, const char * path){
 	}
 
 	son_fprintf(&phy, "{\n");
-	son_to_json_recursive(h, son_next(&eon), 1, is_array, &phy);
+	son_to_json_recursive(h, son_next(&son), 1, is_array, &phy);
 	son_fprintf(&phy, "}\n");
 
 	return son_phy_close(&phy);
@@ -660,18 +663,18 @@ void son_fprintf(son_phy_t * phy, const char * format, ...){
 }
 
 void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy){
-	son_store_t eon;
+	son_store_t son;
 	son_size_t data_size;
 	son_size_t pos;
 	u8 type;
 
 
-	while( son_phy_read(&(h->phy), &eon, sizeof(son_store_t)) > 0 ){
+	while( son_phy_read(&(h->phy), &son, sizeof(son_store_t)) > 0 ){
 
 		pos = son_phy_lseek(&(h->phy), 0, SON_SEEK_CUR);
 
-		data_size = son_next(&eon) - pos;
-		type = son_type(&eon);
+		data_size = son_next(&son) - pos;
+		type = son_type(&son);
 
 
 		print_indent(indent, phy);
@@ -679,13 +682,13 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 			if( is_array ){
 				son_fprintf(phy, "{\n");
 			} else {
-				son_fprintf(phy, "\"%s\" : {\n", eon.key.name);
+				son_fprintf(phy, "\"%s\" : {\n", son.key.name);
 			}
-			son_to_json_recursive(h, son_next(&eon), indent+1, 0, phy);
+			son_to_json_recursive(h, son_next(&son), indent+1, 0, phy);
 			print_indent(indent, phy);
 			son_fprintf(phy, "}");
 			//add a comma?
-			if( son_next(&eon) != last_pos ){
+			if( son_next(&son) != last_pos ){
 				son_fprintf(phy, ",");
 			}
 
@@ -694,13 +697,13 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 			if( is_array ){
 				son_fprintf(phy, "[\n");
 			} else {
-				son_fprintf(phy, "\"%s\" : [\n", eon.key.name);
+				son_fprintf(phy, "\"%s\" : [\n", son.key.name);
 			}
-			son_to_json_recursive(h, son_next(&eon), indent+1, 1, phy);
+			son_to_json_recursive(h, son_next(&son), indent+1, 1, phy);
 			print_indent(indent, phy);
 			son_fprintf(phy, "]");
 			//add a comma?
-			if( son_next(&eon) != last_pos ){
+			if( son_next(&son) != last_pos ){
 				son_fprintf(phy, ",");
 			}
 
@@ -712,7 +715,7 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 			son_phy_read(&(h->phy), buffer, data_size);
 
 			if( is_array == 0 ){
-				son_fprintf(phy, "\"%s\" : ", eon.key.name);
+				son_fprintf(phy, "\"%s\" : ", son.key.name);
 			}
 
 			if( type == SON_STRING ){
@@ -744,13 +747,13 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 				son_fprintf(phy, "DATA");
 			}
 
-			if( son_next(&eon) != last_pos ){
+			if( son_next(&son) != last_pos ){
 				son_fprintf(phy, ",");
 			}
 			son_fprintf(phy, "\n");
 		}
 
-		if( son_next(&eon) == last_pos ){
+		if( son_next(&son) == last_pos ){
 			return;
 		}
 	}
@@ -758,12 +761,12 @@ void son_to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_ar
 
 int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 	size_t pos;
-	son_store_t eon;
+	son_store_t son;
 	son_marker_t type;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE,&son);
 
 	if(read_length < 0){
 		return -1;
@@ -779,17 +782,17 @@ int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 		return -1;
 	}
 
-	son_set_type(&eon,type,0);
+	son_set_type(&son,type,0);
 
-	pos = son_phy_lseek(&(h->phy),-1*(s32)sizeof(eon),SON_SEEK_CUR);
-	son_set_next(&eon,pos+sizeof(son_store_t));
+	pos = son_phy_lseek(&(h->phy),-1*(s32)sizeof(son),SON_SEEK_CUR);
+	son_set_next(&son,pos+sizeof(son_store_t));
 
-	return son_phy_write(&(h->phy),&eon,sizeof(son_store_t));
+	return son_phy_write(&(h->phy),&son,sizeof(son_store_t));
 
 }
 
 float son_edit_float(son_t * h, const char * key, float v){
-	son_store_t eon;
+	son_store_t son;
 	son_size_t data_size;
 
 	int read_length;
@@ -797,13 +800,13 @@ float son_edit_float(son_t * h, const char * key, float v){
 
 	float  t = v;
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &son);
 
 	if(read_length < 0){
 		return -1;
 	}
 
-	if(son_seek_store(h,key,&eon,&data_size) < 0){
+	if(son_seek_store(h,key,&son,&data_size) < 0){
 		return -1;
 	}
 
@@ -811,19 +814,19 @@ float son_edit_float(son_t * h, const char * key, float v){
 }
 
 int son_edit_unum(son_t * h, const char * key, u32 v){
-	son_store_t eon;
+	son_store_t son;
 	son_size_t data_size;
 
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &son);
 
 	if(read_length < 0){
 		return -1;
 	}
 
-	if(son_seek_store(h,key,&eon,&data_size) < 0){
+	if(son_seek_store(h,key,&son,&data_size) < 0){
 		return -1;
 	}
 
@@ -832,13 +835,13 @@ int son_edit_unum(son_t * h, const char * key, u32 v){
 }
 
 int son_edit_num(son_t * h, const char * key, int32_t v){
-	son_store_t eon;
+	son_store_t son;
 	son_size_t data_size;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &son);
 
 
 	if(read_length < 0){
@@ -846,7 +849,7 @@ int son_edit_num(son_t * h, const char * key, int32_t v){
 	}
 
 
-	if(son_seek_store(h,key,&eon,&data_size)<0){
+	if(son_seek_store(h,key,&son,&data_size)<0){
 		return -1;
 	}
 
@@ -855,7 +858,7 @@ int son_edit_num(son_t * h, const char * key, int32_t v){
 }
 
 int son_edit_str(son_t * h, const char * key, const char * v){
-	son_store_t eon;
+	son_store_t son;
 	son_size_t data_size;
 
 	int read_length;
@@ -864,7 +867,7 @@ int son_edit_str(son_t * h, const char * key, const char * v){
 	char buffer_empty[SON_BUFFER_SIZE];
 	char buffer[SON_BUFFER_SIZE];
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &son);
 
 	if (read_length < 0) {
 		return -1;
@@ -878,7 +881,7 @@ int son_edit_str(son_t * h, const char * key, const char * v){
 
 	read_write_diff = abs(read_length-write_length);
 
-	if( son_seek_store(h,key,&eon,&data_size ) < 0){
+	if( son_seek_store(h,key,&son,&data_size ) < 0){
 		return -1;
 	}
 
@@ -892,7 +895,7 @@ int son_edit_str(son_t * h, const char * key, const char * v){
 
 int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
 	son_size_t data_size;
-	son_store_t eon;
+	son_store_t son;
 	char buffer[SON_BUFFER_SIZE];
 
 	int read_length;
@@ -900,7 +903,7 @@ int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
 	int read_write_diff;
 	char empty_buffer[SON_BUFFER_SIZE];
 
-	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &eon);
+	read_length = son_read_raw_data(h,key,buffer,SON_BUFFER_SIZE, &son);
 	write_length = strlen(data);
 	if (read_length < 0){
 		return -1;
@@ -912,7 +915,7 @@ int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size ){
 		return -1;
 	}
 
-	if(son_seek_store(h,key,&eon,&data_size) < 0){
+	if(son_seek_store(h,key,&son,&data_size) < 0){
 		return -1;
 	}
 

@@ -54,7 +54,7 @@ typedef struct MCU_PACK {
 
 //an object has members that are accessed by using a unique identifier (key)
 typedef struct MCU_PACK {
-	u8 type_flags;
+	u8 o_flags;
 	son_pos_t pos;
 	son_key_t key;
 } son_store_t;
@@ -90,7 +90,7 @@ static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); 
 #include <iface/link.h>
 #endif
 
-void son_set_driver(son_t * h, void * handle);
+void son_set_driver(son_t * h, void * driver);
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
