@@ -14,49 +14,8 @@
 
 #define SON_BUFFER_SIZE 32
 
-const son_api_t m_son_api = {
-		.version = SON_VERSION,
-		.create = son_create,
-		.append = son_append,
-		.open = son_open,
-		.close = son_close,
-		.to_json = son_to_json,
-		.open_obj = son_open_obj,
-		.close_obj = son_close_obj,
-		.open_array = son_open_array,
-		.close_array = son_close_array,
-		.open_data = son_open_data,
-		.close_data = son_close_data,
-		.write_str = son_write_str,
-		.write_num = son_write_num,
-		.write_unum = son_write_unum,
-		.write_float = son_write_float,
-		.write_true = son_write_true,
-		.write_false = son_write_false,
-		.write_null = son_write_null,
-		.write_data = son_write_data,
-		.write_open_data = son_write_open_data,
-		.read_str = son_read_str,
-		.read_num = son_read_num,
-		.read_unum = son_read_unum,
-		.read_float = son_read_float,
-		.read_data = son_read_data,
-		.read_bool = son_read_bool,
-		.seek = son_seek,
-		.edit = son_edit,
-		.edit_float = son_edit_float,
-		.edit_data = son_edit_data,
-		.edit_str = son_edit_str,
-		.edit_num = son_edit_num,
-		.edit_unum = son_edit_unum,
-		.edit_bool = son_edit_bool
-};
-
-const son_api_t * son_api(){ return &m_son_api; }
-
 static u8 store_type(const son_store_t * store);
-static u8 store_is_fixed_array_size(const son_store_t * son);
-static void store_set_type(son_store_t * store, u8 type, u8 fixed_array_size);
+static void store_set_type(son_store_t * store, u8 type);
 static u32 store_next(const son_store_t * store);
 static void store_set_next(son_store_t * store, u32 offset);
 static void store_insert_key(son_store_t * store, const char * key);
@@ -70,11 +29,11 @@ static int store_seek(son_t * h, const char * access, son_store_t * store, son_s
 static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
 static int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size);
 static int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_marker_t new_data_marker);
-static int write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size);
+static int write_open_marker(son_t * h, const char * key, u8 type);
 static int write_close_marker(son_t * h);
 
-static int token_is_array(char * tok, son_size_t * index);
-static int seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * store, son_size_t * size);
+static char * is_token_array(char * tok, son_size_t * index);
+static int seek_array_key(son_t * h, son_size_t ind, son_store_t * store, son_size_t * size);
 static int seek_key(son_t * h, const char * name, son_store_t * ob, son_size_t * size);
 
 static void phy_fprintf(son_phy_t * phy, const char * format, ...);
@@ -82,7 +41,6 @@ static int phy_lseek_current(son_t * h, s32 offset);
 static int phy_lseek_set(son_t * h, s32 offset);
 static int phy_lseek_end(son_t * h);
 
-#define SON_FIXED_ARRAY_FLAG (1<<7)
 #define SON_MARKER_MASK (0x0F)
 
 #if !defined __StratifyOS__
@@ -111,12 +69,8 @@ u8 store_type(const son_store_t * son){
 	return son->o_flags & SON_MARKER_MASK;
 }
 
-u8 store_is_fixed_array_size(const son_store_t * son){
-	return (son->o_flags & SON_FIXED_ARRAY_FLAG) != 0;
-}
-
-void store_set_type(son_store_t * son, u8 type, u8 fixed_array_size){
-	son->o_flags = (type & SON_MARKER_MASK) | (fixed_array_size ? SON_FIXED_ARRAY_FLAG : 0);
+void store_set_type(son_store_t * son, u8 type){
+	son->o_flags = (type & SON_MARKER_MASK);
 }
 
 
@@ -177,7 +131,8 @@ u32 store_calc_checksum(son_store_t * store){
 	}
 	return checksum;
 }
-int write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size){
+
+int write_open_marker(son_t * h, const char * key, u8 type){
 	son_store_t store;
 	size_t pos;
 
@@ -201,16 +156,17 @@ int write_open_marker(son_t * h, const char * key, u8 type, u8 fixed_size){
 		h->stack[h->stack_loc].pos = pos;
 		h->stack_loc++;
 
-		store_set_type(&store, type, fixed_size);
+		store_set_type(&store, type);
 		store_set_next(&store, 0);
 
 		return store_write(h, &store);
 	}
 
+	h->err = SON_ERR_STACK_OVERFLOW;
 	return -1;
 }
 
-static int write_close_marker(son_t * h){
+int write_close_marker(son_t * h){
 	son_size_t pos;
 	son_size_t current;
 	son_store_t store;
@@ -220,27 +176,31 @@ static int write_close_marker(son_t * h){
 		pos = h->stack[h->stack_loc].pos;
 		current = phy_lseek_current(h, 0);
 
+		//seek to the store of the open marker
+		if( phy_lseek_set(h, pos) < 0 ){ return -1; }
 
-		if( phy_lseek_set(h, pos) < 0 ){
+		//read the current store
+		if( store_read(h, &store) < 0 ){
 			return -1;
 		}
 
-		if( son_phy_read(&(h->phy), &store, sizeof(son_store_t)) < 0 ){
-			return -1;
-		}
+		//seek back to the store position
+		if( phy_lseek_set(h, pos) < 0 ){ return -1; }
 
-		if( phy_lseek_set(h, pos) < 0 ){
-			return -1;
-		}
-
+		//update the store position
 		store_set_next(&store, current);
-		store_write(h, &store);
+
+		//save the store
+		if( store_write(h, &store) < 0 ){ return -1; }
 
 		if( phy_lseek_set(h, current) < 0 ){
 			return -1;
 		}
+
+		return 0;
 	}
-	return 0;
+	h->err = SON_ERR_STACK_OVERFLOW;
+	return -1;
 }
 
 int son_open(son_t * h, const char * name){
@@ -343,7 +303,7 @@ int son_close(son_t * h, int close_all){
 
 
 int son_open_obj(son_t * h, const char * key){
-	return write_open_marker(h, key, SON_OBJ, 0);
+	return write_open_marker(h, key, SON_OBJ);
 }
 
 int son_close_obj(son_t * h){
@@ -351,7 +311,7 @@ int son_close_obj(son_t * h){
 }
 
 int son_open_data(son_t * h, const char * key){
-	return write_open_marker(h, key, SON_DATA, 0);
+	return write_open_marker(h, key, SON_DATA);
 }
 
 int son_close_data(son_t * h){
@@ -363,8 +323,8 @@ void store_insert_key(son_store_t * son, const char * key){
 	strncpy((char*)son->key.name, key, SON_KEY_NAME_SIZE);
 }
 
-int son_open_array(son_t * h, const char * key, int fixed_size){
-	return write_open_marker(h, key, SON_ARRAY, fixed_size);
+int son_open_array(son_t * h, const char * key){
+	return write_open_marker(h, key, SON_ARRAY);
 }
 
 int son_close_array(son_t * h){
@@ -430,7 +390,7 @@ int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * 
 	}
 
 	store_insert_key(&store, key);
-	store_set_type(&store, type, 0);
+	store_set_type(&store, type);
 
 
 	pos = phy_lseek_current(h, 0);
@@ -445,7 +405,7 @@ int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * 
 	return ret;
 }
 
-int token_is_array(char * tok, son_size_t * index){
+char * is_token_array(char * tok, son_size_t * index){
 	char * arr;
 	arr = strchr(tok, '[');
 	if( arr == 0 ){
@@ -459,66 +419,40 @@ int token_is_array(char * tok, son_size_t * index){
 
 
 	arr[0] = 0;
-	return 1;
+	return arr + 1;
 }
 
-int seek_array_key(son_t * h, son_size_t ind, u8 fixed_size, son_store_t * store, son_size_t * size){
+int seek_array_key(son_t * h, son_size_t ind, son_store_t * store, son_size_t * size){
 	son_size_t pos;
-	son_size_t data_size;
-	son_size_t array_data_size;
 	son_size_t i;
 	son_size_t next;
 
 	pos = phy_lseek_current(h, 0);
-	array_data_size = store_next(store) - pos;
 
-	if( fixed_size ){
+	for(i=0; i <= ind; i++){
 
 		if( store_read(h, store) <= 0 ){
+			//this is an error which is set by store_read()
 			return 0;
 		}
 
-		data_size = store_next(store) - pos;
-		if( ind > 0 ){
-			if( ((ind+1) * data_size) < array_data_size){
-				phy_lseek_set(h, pos + ind*data_size);
+		pos = phy_lseek_current(h, 0);
 
-				if( store_read(h, store) <= 0 ){
-					return 0;
-				}
+		next = store_next(store);
 
-			} else {
-				h->err = SON_ERR_INVALID_ARRAY;
-				return 0;
-			}
+		if( next == 0 ){
+			h->err = SON_ERR_ARRAY_INDEX_NOT_FOUND;
+			return 0;
 		}
 
-		*size = data_size;
-		return 1;
-	} else {
-		for(i=0; i <= ind; i++){
-
-			if( store_read(h, store) <= 0 ){
-				return 0;
-			}
-
-			pos = phy_lseek_current(h, 0);
-
-			next = store_next(store);
-
-			if( next == 0 ){
-				h->err = SON_ERR_ARRAY_INDEX_NOT_FOUND;
-				return 0;
-			}
-
-			if( i != ind ){
-				phy_lseek_set(h, next);
-			}
+		if( i != ind ){
+			phy_lseek_set(h, next);
 		}
-
-		*size = store_next(store) - pos;
-		return 1;
 	}
+
+	*size = store_next(store) - pos;
+	return 1;
+
 
 	//never arrives here
 	return 0;
@@ -572,13 +506,22 @@ int store_seek(son_t * h, const char * access, son_store_t * son, son_size_t * d
 	char acc[SON_ACCESS_NAME_CAPACITY];
 	char * str;
 	char * tok;
+	char * nested_array_tok;
 	char acc_item[SON_ACCESS_NAME_CAPACITY];
 	son_size_t ind;
 
 	phy_lseek_set(h, 0);
 
+	if( strnlen(access, SON_ACCESS_NAME_SIZE) > (SON_ACCESS_MAX_USER_SIZE) ){
+		h->err = SON_ERR_ACCESS_TOO_LONG;
+		return -1;
+	}
+
 	strncpy(acc, "$.", SON_ACCESS_NAME_SIZE);
 	strncat(acc, access, SON_ACCESS_NAME_SIZE - 2);
+
+	//! \todo Need to check and see if the access string is too large
+
 	str = acc;
 
 	//peel off object names or index values
@@ -586,15 +529,20 @@ int store_seek(son_t * h, const char * access, son_store_t * son, son_size_t * d
 
 		strncpy(acc_item, tok, SON_ACCESS_NAME_SIZE);
 
-		if( token_is_array(acc_item, &ind) ){
+		if( (nested_array_tok = is_token_array(acc_item, &ind)) != 0 ){
 
 			//search for token then array index
 			if( seek_key(h, acc_item, son, data_size) ){
 
-				//now find the array object
-				if( seek_array_key(h, ind, store_is_fixed_array_size(son), son, data_size) == 0){
-					return -1;
-				}
+				do {
+					//now find the array object
+					if( seek_array_key(h, ind, son, data_size) == 0){
+						return -1;
+					}
+
+					nested_array_tok = is_token_array(nested_array_tok, &ind);
+
+				} while( nested_array_tok != 0 );
 
 			} else {
 				return -1;
@@ -834,11 +782,21 @@ void phy_fprintf(son_phy_t * phy, const char * format, ...){
 }
 
 int phy_lseek_current(son_t * h, s32 offset){
-	return son_phy_lseek(&(h->phy), offset, SON_SEEK_CUR);
+	int ret;
+	ret = son_phy_lseek(&(h->phy), offset, SON_SEEK_CUR);
+	if( ret < 0 ){
+		h->err = SON_ERR_SEEK_IO;
+	}
+	return ret;
 }
 
 int phy_lseek_set(son_t * h, s32 offset){
-	return son_phy_lseek(&(h->phy), offset, SON_SEEK_SET);
+	int ret;
+	ret = son_phy_lseek(&(h->phy), offset, SON_SEEK_SET);
+	if( ret < 0 ){
+		h->err = SON_ERR_SEEK_IO;
+	}
+	return ret;
 }
 
 int phy_lseek_end(son_t * h){
@@ -985,7 +943,7 @@ int son_edit_bool(son_t * h, const char * key, son_bool_t v){
 		return -1;
 	}
 
-	store_set_type(&store, type, 0);
+	store_set_type(&store, type);
 
 	pos = phy_lseek_current(h, -1*(s32)sizeof(store));
 	store_set_next(&store, pos+sizeof(son_store_t));

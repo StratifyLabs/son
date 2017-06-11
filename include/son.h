@@ -26,6 +26,7 @@ typedef int son_bool_t;
 
 #define SON_ACCESS_NAME_CAPACITY 64
 #define SON_ACCESS_NAME_SIZE (SON_ACCESS_NAME_CAPACITY-1)
+#define SON_ACCESS_MAX_USER_SIZE (SON_ACCESS_NAME_SIZE - 2)
 #define SON_KEY_NAME_CAPACITY 24
 #define SON_KEY_NAME_SIZE (SON_KEY_NAME_CAPACITY-1)
 
@@ -40,13 +41,16 @@ enum {
 	SON_ERR_READ_IO,
 	SON_ERR_WRITE_IO,
 	SON_ERR_CLOSE_IO,
+	SON_ERR_SEEK_IO,
 	SON_ERR_READ_CHECKSUM,
 	SON_ERR_CANNOT_APPEND,
 	SON_ERR_CANNOT_WRITE,
 	SON_ERR_INVALID_ROOT,
 	SON_ERR_INVALID_ARRAY,
 	SON_ERR_ARRAY_INDEX_NOT_FOUND,
+	SON_ERR_ACCESS_TOO_LONG,
 	SON_ERR_KEY_NOT_FOUND,
+	SON_ERR_STACK_OVERFLOW,
 	SON_ERR_INVALID_KEY,
 };
 
@@ -144,7 +148,7 @@ int son_close(son_t * h, int close_all);
 int son_to_json(son_t * h, const char * path);
 int son_open_obj(son_t * h, const char * key);
 int son_close_obj(son_t * h);
-int son_open_array(son_t * h, const char * key, int fixed_size);
+int son_open_array(son_t * h, const char * key);
 int son_close_array(son_t * h);
 int son_open_data(son_t * h, const char * key);
 int son_close_data(son_t * h);
@@ -183,7 +187,7 @@ typedef struct MCU_PACK {
 	int (*to_json)(son_t * h, const char * path);
 	int (*open_obj)(son_t * h, const char * key);
 	int (*close_obj)(son_t * h);
-	int (*open_array)(son_t * h, const char * key, int fixed_size);
+	int (*open_array)(son_t * h, const char * key);
 	int (*close_array)(son_t * h);
 	int (*open_data)(son_t * h, const char * key);
 	int (*close_data)(son_t * h);
