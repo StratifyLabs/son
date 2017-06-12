@@ -91,21 +91,52 @@
 /*! \brief SON Size Type */
 typedef u32 son_size_t;
 
-/*! \details This defines the maximum length of the user
- * supplied values for the \a access parameter.
- */
-#define SON_ACCESS_MAX_USER_SIZE (93)
-#define SON_ACCESS_NAME_SIZE (SON_ACCESS_MAX_USER_SIZE+2)
-#define SON_ACCESS_NAME_CAPACITY (SON_ACCESS_NAME_SIZE+1)
-
-/*! \details This defines the maximum length of any given key
+/*! \details Defines the maximum length of any given key
  * value.
+ *
+ * \showinitializer
  */
 #define SON_KEY_NAME_SIZE (15)
 #define SON_KEY_NAME_CAPACITY (SON_KEY_NAME_SIZE+1)
 
-/*! \details The SON stack type is used when
- * creating new SON files. The members are managed internally.
+
+/*! \details Lists the values for valid data types.
+ *
+ * These values are provided for reference. They are used internally
+ * and not required in the API.
+ */
+typedef enum {
+	SON_STRING /*! String (Internal use only) */,
+	SON_FLOAT /*! Float (Internal use only) */,
+	SON_NUMBER_U32 /*! Unsigned 32-bit value (Internal use only) */,
+	SON_NUMBER_S32 /*! Signed 32-bit value (Internal use only) */,
+	SON_DATA /*! Data (user-defined size) (Internal use only) */,
+	SON_OBJ /*! Object (Internal use only) */,
+	SON_ARRAY /*! Array (Internal use only) */, //can be an array of distinct objects
+	SON_TRUE /*! True value (Internal use only) */,
+	SON_FALSE /*! False value (Internal use only) */,
+	SON_NULL /*! Null value (Internal use only) */,
+	SON_TOTAL
+} son_value_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#ifdef __link
+#include <iface/link.h>
+#endif
+
+
+/*! \addtogroup FILES File Handling (Create/Append/Open/Close)
+ * @{
+ */
+
+/*! \details Defines the stack used when
+ * creating and appending files.
+ *
+ * The members are managed internally and not used in the API.
  *
  * See son_t for an example.
  *
@@ -115,9 +146,35 @@ typedef struct {
 } son_stack_t;
 
 
+/*!
+ * \details Defines the data type for handling files.
+ *
+ * All the members are managed internally.
+ *
+ * Here is an example:
+ * \code
+ * son_t h;
+ * son_stack_t stack[10];
+ * son_create(&h, "/home/data.son", stack, 10);
+ * son_write_str(&h, "str0", "Hello");
+ * son_write_str(&h, "str1", "World");
+ * son_close(&h);
+ * \endcode
+ *
+ * \sa son_create(), son_append()
+ */
+typedef struct {
+	son_phy_t phy /* Internal use only */;
+	son_stack_t * stack /* Internal use only */;
+	size_t stack_size /* Internal use only */;
+	size_t stack_loc /* Internal use only */;
+	u32 err /* Internal use only */;
+} son_t;
+
+
 /*! \brief See below for details.
- * \details These values are assigned to son_t->err when an operation
- * does not complete successfully.
+ * \details These are the values returned by son_get_error(). The
+ * value is set when a son_* function does not complete successfully.
  */
 typedef enum {
 	SON_ERR_NONE /*! This value indicates no error has occurred. */,
@@ -142,56 +199,6 @@ typedef enum {
 } son_err_t;
 
 
-/*!
- * \details SON Type is used for handling files. All the
- * members are managed internally.
- *
- * Here is an example:
- * \code
- * son_t h;
- * son_stack_t stack[10];
- * son_create(&h, "/home/data.son", stack, 10);
- * son_write_str(&h, "str0", "Hello");
- * son_write_str(&h, "str1", "World");
- * son_close(&h);
- * \endcode
- *
- *
- */
-typedef struct {
-	son_phy_t phy /* Internal use only */;
-	son_stack_t * stack /* Internal use only */;
-	size_t stack_size /* Internal use only */;
-	size_t stack_loc /* Internal use only */;
-	u32 err /* Internal use only */;
-} son_t;
-
-
-/*! \brief Value types */
-typedef enum {
-	SON_STRING /*! String (Internal use only) */,
-	SON_FLOAT /*! Float (Internal use only) */,
-	SON_NUMBER_U32 /*! Unsigned 32-bit value (Internal use only) */,
-	SON_NUMBER_S32 /*! Signed 32-bit value (Internal use only) */,
-	SON_DATA /*! Data (user-defined size) (Internal use only) */,
-	SON_OBJ /*! Object group (Internal use only) */,
-	SON_ARRAY /*! Array (Internal use only) */, //can be an array of distinct objects
-	SON_TRUE /*! True value (Internal use only) */,
-	SON_FALSE /*! False value (Internal use only) */,
-	SON_NULL /*! Null value (Internal use only) */,
-	SON_TOTAL
-} son_value_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); }
-
-#ifdef __link
-#include <iface/link.h>
-#endif
-
 #if !defined __StratifyOS__
 void son_set_driver(son_t * h, void * driver);
 #endif
@@ -200,53 +207,20 @@ void son_set_driver(son_t * h, void * driver);
  * current error value to SON_ERR_NONE.
  *
  * @param h A pointer to the handle
+ * @return The most recent error value
  */
 int son_get_error(son_t * h);
 
-/*! \details This function closes a file that has been opened with
- * either son_create(), son_append(), or son_open().
- *
- * @param h A pointer to the handle
- * @return Less than zero (perror() for details)
- */
-int son_close(son_t * h);
+static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); }
 
-/*! \details Seeks to the value specified by \a access and
- * copies the size of the data. This function is useful
- * if the size of the data is unknown when it needs to be read.
- *
- * \code
- *
- * son_t s;
- * son_size_t size;
- * char * name;
- * son_open(&s, "/home/test.son");
- *
- * son_seek(&s, "person.name", &size);
- * name = malloc(size);
- * son_read_str(&s, "person.name", name, size);
- *
- * \endcode
- *
- * @param h A pointer to the handler
- * @param access The access string
- * @param size A pointer to the destination data size
- * @return Less than zero on an error
- *
- */
-int son_seek(son_t * h, const char * access, son_size_t * size);
 
-/*! \details This function will convert an open SON file to JSON.
- * The file
+/*! \details Exports the data in an open SON file to JSON.
  *
  * @param h A pointer to the handle
  * @param path The path to the destination JSON file
+ * @return Less than zero for an error
  */
 int son_to_json(son_t * h, const char * path);
-
-/*! \addtogroup WRITE Creating Files and Writing/Appeding Values
- * @{
- */
 
 /*! \details Creates a new SON file.
  *
@@ -292,11 +266,19 @@ int son_to_json(son_t * h, const char * path);
  * son_close(&h);
  * \endcode
  *
+ * \sa WRITE
+ *
  */
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 
-/*! \details This function will open a SON file for appending. Items
+/*! \details Opens a file for appending. Items
  * written to the file will be added to the root object or array.
+ *
+ * @param h A pointer to the handle
+ * @param name Path to the file to append
+ * @param stack A pointer to the SON stack
+ * @param stack_size The number of stack entries
+ * @return Less than zero if there was an error
  *
  * \code
  * son_stack_t son_stack[10];
@@ -305,11 +287,50 @@ int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
  * son_write_str(&son, "str", "World"); //this will be appended to the root object or array
  * son_close(&son, 1); //close out all structures -- no more appending
  * \endcode
+ *
+ * \sa  WRITE
  */
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 
-/*! \details Start a new object while creating
- * or appending an SON file.
+/*! \details Opens a file for reading.
+ *
+ * @param h A pointer to the handle
+ * @param name The path to the file to open
+ * @return Less than zero if there was an error
+ *
+ * Here is an example of how to read key data from a file.
+ *
+ * \code
+ * son_t son;
+ * u32 unum;
+ * son_open(&son, "/home/data.son");
+ * unum = son_read_unum(&son, "key.unum");
+ * son_close(&son);
+ * \endcode
+ *
+ * \sa READ
+ *
+ */
+int son_open(son_t * h, const char * name);
+
+/*! \details Closes a file that was opened or created with
+ * son_create(), son_append(), or son_open().
+ *
+ * @param h A pointer to the handle
+ * @return Less than zero (perror() for details)
+ */
+int son_close(son_t * h);
+
+
+/*! @} */
+
+/*! \addtogroup WRITE Writing/Appending Values to Files
+ * @{
+ */
+
+
+/*! \details Starts a new object while creating
+ * or appending values to a SON file.
  *
  * @param h A pointer to the handle
  * @param key The key for the new object
@@ -320,41 +341,48 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
  */
 int son_open_obj(son_t * h, const char * key);
 
-/*! \details Close an object while creating or appending a
+/*! \details Closes an object while creating or appending a
  * SON file.
  *
  * @param h A pointer to the handle
  *
- * \sa son_create()
+ * The function son_close_obj() is used to close the object.
+ *
+ * \sa son_create(), son_close_obj()
  */
 int son_close_obj(son_t * h);
 
-/*! \details Open a new array while creating or appending a SON file.
+/*! \details Opens a new array while creating or appending a SON file.
  *
  * @param h A pointer to the handle
  * @param key The key for the new array
  * @return Less then zero for an error
  *
- * \sa son_create()
+ * The function son_close_array() is used to close the array value.
+ *
+ * \sa son_create(), son_close_array()
  *
  */
 int son_open_array(son_t * h, const char * key);
 
-/*! \details Close an array while creating or appending a
+/*! \details Closes an array while creating or appending a
  * SON file.
  *
  * @param h A pointer to the handle
+ * @return Less than zero if there was an error
  *
- * \sa son_create()
+ * \sa son_create(), son_open_array()
  */
 int son_close_array(son_t * h);
 
-/*! \details
- *
- * Opens a data object for writing. The son_write_open_data() function
+/*! \details Opens a data object for writing. The son_write_open_data() function
  * is used to write data to the object. This function can be
  * used when the data is not immediately availabe in RAM (for example,
  * needs to be read from a file).
+ *
+ * @param h A pointer to the handle
+ * @param key The key for the new object
+ * @return Less than zero for an error
  *
  * \code
  *
@@ -371,9 +399,6 @@ int son_close_array(son_t * h);
  *
  * \endcode
  *
- * @param h A pointer to the handle
- * @param key The key for the new object
- *
  * \sa son_close_data(), son_write_open_data()
  */
 int son_open_data(son_t * h, const char * key);
@@ -381,6 +406,7 @@ int son_open_data(son_t * h, const char * key);
 /*! \details Closes a data object that has previously
  * been opened using son_open_data().
  *
+ * @param h A pointer to the handle
  * @return Less than zero on error
  *
  * \sa son_open_data(), son_write_open_data()
@@ -483,24 +509,43 @@ int son_write_open_data(son_t * h, const void * data, son_size_t size);
  * @{
  */
 
-/*! \details This function opens the file for reading.
+/*! \details Defines the maximum length of the user
+ * supplied values for the \a access parameter.
  *
- * Here is an example of how to read key data from a file.
- *
- * \code
- * son_t son;
- * u32 unum;
- * son_open(&son, "/home/data.son");
- * unum = son_read_unum(&son, "key.unum");
- * son_close(&son);
- * \endcode
+ * \showinitializer
  *
  */
-int son_open(son_t * h, const char * name);
+#define SON_ACCESS_MAX_USER_SIZE (93)
+#define SON_ACCESS_NAME_SIZE (SON_ACCESS_MAX_USER_SIZE+2)
+#define SON_ACCESS_NAME_CAPACITY (SON_ACCESS_NAME_SIZE+1)
+
+/*! \details Seeks to the value specified by \a access and
+ * copies the size of the data.
+ *
+ * @param h A pointer to the handler
+ * @param access The access string
+ * @param size A pointer to the destination data size
+ * @return Less than zero on an error
+ *
+ * This function is useful if the size of the data is
+ * unknown when it needs to be read.
+ *
+ * \code
+ * son_t s;
+ * son_size_t size;
+ * char * name;
+ * son_open(&s, "/home/test.son");
+ *
+ * son_seek(&s, "person.name", &size);
+ * name = malloc(size);
+ * son_read_str(&s, "person.name", name, size);
+ * \endcode
+ *
+ *
+ */
+int son_seek(son_t * h, const char * access, son_size_t * size);
 
 /*! \details Reads the value specified by \a access as a string value.
- *
- * If the base value is not a string, it will be converted to a string.
  *
  * @param h A pointer to the handler
  * @param access The access string
@@ -508,47 +553,52 @@ int son_open(son_t * h, const char * name);
  * @param capacity The max capacity of the destination string
  * @return Less than zero on an error
  *
+ * If the base value is not a string, it will be converted to a string.
+ *
+ *
  */
 int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity);
 
 /*! \details Reads the value specified by \a access as a signed integer.
+ *
+ * @param h A pointer to the handler
+ * @param access The access string
+ * @return Less than zero on an error
  *
  * If the base value is not a signed integer, it will be converted to
  * one if possible. SON_STRING is converted using atoi() and
  * SON_DATA cannot be converted (error will be set to
  * SON_ERR_CANNOT_CONVERT and 0 will be returned).
  *
- * @param h A pointer to the handler
- * @param access The access string
- * @return Less than zero on an error
  *
  */
 s32 son_read_num(son_t * h, const char * access);
 
 /*! \details Reads the value specified by \a access as a unsigned integer.
  *
+ * @param h A pointer to the handler
+ * @param access The access string
+ * @return Less than zero on an error
+ *
  * If the base value is not a unsigned integer, it will be converted to
  * one if possible. SON_STRING is converted using atoi() and
  * SON_DATA cannot be converted (error will be set to
  * SON_ERR_CANNOT_CONVERT and 0 will be returned).
  *
- * @param h A pointer to the handler
- * @param access The access string
- * @return Less than zero on an error
  *
  */
 u32 son_read_unum(son_t * h, const char * access);
 
 /*! \details Reads the value specified by \a access as a floating point value.
  *
+ * @param h A pointer to the handler
+ * @param access The access string
+ * @return Less than zero on an error
+ *
  * If the base value is not a floating point value, it will be converted to
  * one if possible. SON_STRING is converted using atof() and
  * SON_DATA cannot be converted (error will be set to
  * SON_ERR_CANNOT_CONVERT and 0.0 will be returned).
- *
- * @param h A pointer to the handler
- * @param access The access string
- * @return Less than zero on an error
  *
  */
 float son_read_float(son_t * h, const char * access);
@@ -556,26 +606,26 @@ float son_read_float(son_t * h, const char * access);
 
 /*! \details Reads the value specified by \a access as raw data (no type).
  *
- * If the base data type is not raw data, it will be interpreted as raw
- * data without performing any conversions.
- *
  * @param h A pointer to the handler
  * @param access The access string
  * @param data A pointer to the destination data
  * @param size The number of bytes available at the destination
  * @return Less than zero on an error
  *
+ * If the base data type is not raw data, it will be interpreted as raw
+ * data without performing any conversions.
+ *
  */
 int son_read_data(son_t * h, const char * access, void * data, son_size_t size);
 
 /*! \details Reads the value specified by \a access as a boolean.
  *
- * If the base data type is not true or false, it will be converted
- * to true (1) or false (0).
- *
  * @param h A pointer to the handler
  * @param access The access string
  * @return Less than zero on an error
+ *
+ * If the base data type is not true or false, it will be converted
+ * to true (1) or false (0).
  *
  */
 int son_read_bool(son_t *h, const char * access);
