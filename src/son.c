@@ -60,8 +60,8 @@ static int store_write(son_t * h, son_store_t * store);
 static int store_seek(son_t * h, const char * access, son_store_t * store, son_size_t * data_size);
 
 static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
-static int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size);
-static int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_marker_t new_data_marker);
+static int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v, son_size_t size);
+static int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_value_t new_data_marker);
 static int write_open_marker(son_t * h, const char * key, u8 type);
 static int write_close_marker(son_t * h);
 
@@ -246,7 +246,7 @@ int son_open(son_t * h, const char * name){
 		return -1;
 	}
 
-	if( phy_seek_set(h, sizeof(son_hdr_t)) < 0 ){
+	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
 		return -1;
 	}
 
@@ -266,7 +266,7 @@ int son_edit(son_t * h, const char * name){
 		return -1;
 	}
 
-	if( phy_seek_set(h, sizeof(son_hdr_t)) < 0 ){
+	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
 		return -1;
 	}
 
@@ -421,7 +421,7 @@ int son_write_open_data(son_t * h, const void * v, son_size_t size){
 	return ret;
 }
 
-int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * v, son_size_t size){
+int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v, son_size_t size){
 	size_t pos;
 	son_store_t store;
 	int ret;
@@ -561,7 +561,10 @@ int store_seek(son_t * h, const char * access, son_store_t * son, son_size_t * d
 	char acc_item[SON_ACCESS_NAME_CAPACITY];
 	son_size_t ind;
 
-	phy_lseek_set(h, 0);
+	//phy_lseek_set(h, 0);
+	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
 
 	if( strnlen(access, SON_ACCESS_NAME_SIZE) > (SON_ACCESS_MAX_USER_SIZE) ){
 		h->err = SON_ERR_ACCESS_TOO_LONG;
@@ -978,7 +981,7 @@ int son_edit_data(son_t * h, const char * key, const void * data, son_size_t siz
 int son_edit_bool(son_t * h, const char * key, int v){
 	size_t pos;
 	son_store_t store;
-	son_marker_t type;
+	son_value_t type;
 	int read_length;
 	char buffer[SON_BUFFER_SIZE];
 
@@ -1007,7 +1010,7 @@ int son_edit_bool(son_t * h, const char * key, int v){
 }
 
 
-int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_marker_t new_data_marker){
+int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_value_t new_data_marker){
 	son_size_t data_size;
 	son_store_t son;
 
