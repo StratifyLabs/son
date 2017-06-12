@@ -12,6 +12,39 @@
 #include "son.h"
 #include "son_phy.h"
 
+typedef struct {
+	u16 version;
+} son_hdr_t;
+
+typedef union {
+	float * f;
+	int * n;
+	u32 * n_u32;
+	s32 * n_s32;
+	char * cdata;
+	void * data;
+} son_type_t;
+
+typedef struct MCU_PACK {
+	u8 name[SON_KEY_NAME_CAPACITY];
+} son_key_t;
+
+typedef struct MCU_PACK {
+	u8 page;
+	u16 page_offset;
+} son_pos_t;
+
+//an object has members that are accessed by using a unique identifier (key)
+typedef struct MCU_PACK {
+	u8 o_flags;
+	son_pos_t pos;
+	son_key_t key;
+	u32 checksum;
+} son_store_t;
+
+#define TRUE 1
+#define FALSE 0
+
 #define SON_BUFFER_SIZE 32
 
 static u8 store_type(const son_store_t * store);
@@ -39,7 +72,6 @@ static int seek_key(son_t * h, const char * name, son_store_t * ob, son_size_t *
 static void phy_fprintf(son_phy_t * phy, const char * format, ...);
 static int phy_lseek_current(son_t * h, s32 offset);
 static int phy_lseek_set(son_t * h, s32 offset);
-static int phy_lseek_end(son_t * h);
 
 #define SON_MARKER_MASK (0x0F)
 
@@ -214,6 +246,10 @@ int son_open(son_t * h, const char * name){
 		return -1;
 	}
 
+	if( phy_seek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -230,6 +266,10 @@ int son_edit(son_t * h, const char * name){
 		return -1;
 	}
 
+	if( phy_seek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -243,20 +283,17 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 
 	//check to see if parent object size is 0
 	if( store_read(h, &store) > 0 ){
+		h->stack = stack;
+		h->stack_size = stack_size;
+		h->stack_loc = 0;
 
-		//check to see if file can be appended
-		if( store_next(&store) == 0 ){
-			//now check to see if the final obj is still open for writing
+		//push the root object location onto the stack
+		h->stack[h->stack_loc].pos = 0;
+		h->stack_loc++;
 
-			h->stack = stack;
-			h->stack_size = stack_size;
-			h->stack_loc = 0;
+		phy_lseek_set(h, store_next(&store));
+		return 0;
 
-			phy_lseek_end(h);
-			return 0;
-		} else {
-			h->err = SON_ERR_CANNOT_APPEND;
-		}
 	}
 
 	son_phy_close(&(h->phy));
@@ -266,10 +303,21 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
 
+	son_hdr_t hdr;
+
 	if( son_phy_open(&(h->phy), name, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
+
+	hdr.version = SON_VERSION;
+
+	if( son_phy_write(&(h->phy), &hdr, sizeof(hdr)) != sizeof(hdr) ){
+		h->err = SON_ERR_WRITE_IO;
+		son_phy_close(&(h->phy));
+		return -1;
+	}
+
 
 	h->stack = stack;
 	h->stack_size = stack_size;
@@ -277,20 +325,19 @@ int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 	return 0;
 }
 
-int son_close(son_t * h, int close_all){
+int son_close(son_t * h){
 	int ret;
 	if( h->phy.fd < 0 ){
 		return 0;
 	}
 
 	if( h->stack != 0 ){
-		if( close_all ){
-			while( h->stack_loc > 0 ){
-				write_close_marker(h);
+		while( h->stack_loc > 0 ){
+			if( write_close_marker(h) < 0 ){
+				return -1;
 			}
 		}
 	}
-
 
 	ret = son_phy_close(&(h->phy));
 	h->phy.fd = -1;
@@ -332,7 +379,8 @@ int son_close_array(son_t * h){
 }
 
 int son_write_str(son_t * h, const char * key, const char * v){
-	return write_raw_data(h, key, SON_STRING, v, strlen(v));
+	//add one to the string length so that the zero terminator is saved
+	return write_raw_data(h, key, SON_STRING, v, strlen(v)+1);
 }
 
 int son_write_num(son_t * h, const char * key, s32 v){
@@ -381,6 +429,9 @@ int write_raw_data(son_t * h, const char * key, son_marker_t type, const void * 
 	if( h->stack_size == 0 ){
 		//stack size is set to zero when the file is opened for read only
 		h->err = SON_ERR_CANNOT_WRITE;
+		return -1;
+	} else if ( key[0] == 0 ){
+		h->err = SON_ERR_INVALID_KEY;
 		return -1;
 	}
 
@@ -571,6 +622,12 @@ int son_seek(son_t * h, const char * access, son_size_t * data_size){
 int son_read_raw_data(son_t * h, const char * access, void * data, son_size_t size, son_store_t * son){
 	son_size_t data_size;
 
+	//check to see if h is open for reading
+	if( h->stack_size != 0 ){
+		h->err = SON_ERR_CANNOT_READ;
+		return -1;
+	}
+
 	if( store_seek(h, access, son, &data_size) < 0 ){
 		return -1;
 	}
@@ -612,9 +669,7 @@ int son_read_str(son_t * h, const char * access, char * str, son_size_t capacity
 	case SON_NULL: strcpy(buffer, "null"); break;
 	case SON_DATA:
 	case SON_STRING:
-		//convert to an encoded string
 		return data_size;
-
 	}
 
 	if( buffer[0] != 0 ){
@@ -645,7 +700,9 @@ s32 son_read_num(son_t * h, const char * access){
 	case SON_FALSE: return 0;
 	case SON_NULL: return 0;
 	case SON_STRING: return atoi(buffer);
-	case SON_DATA: return -1;
+	case SON_DATA:
+		h->err = SON_ERR_CANNOT_CONVERT;
+		return 0;
 	}
 
 	return 0;
@@ -672,7 +729,9 @@ u32 son_read_unum(son_t * h, const char * access){
 	case SON_FALSE: return 0;
 	case SON_NULL: return 0;
 	case SON_STRING: return atoi(buffer);
-	case SON_DATA: return -1;
+	case SON_DATA:
+		h->err = SON_ERR_CANNOT_CONVERT;
+		return 0;
 	}
 
 	return 0;
@@ -710,7 +769,7 @@ int son_read_data(son_t * h, const char * access, void * data, son_size_t size){
 	return son_read_raw_data(h, access, data, size, &son);
 }
 
-son_bool_t son_read_bool(son_t *h, const char * key){
+int son_read_bool(son_t *h, const char * key){
 	int data_size;
 	son_store_t son;
 	char buffer[SON_BUFFER_SIZE];
@@ -797,10 +856,6 @@ int phy_lseek_set(son_t * h, s32 offset){
 		h->err = SON_ERR_SEEK_IO;
 	}
 	return ret;
-}
-
-int phy_lseek_end(son_t * h){
-	return son_phy_lseek(&(h->phy), 0, SON_SEEK_END);
 }
 
 void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy){
@@ -913,14 +968,14 @@ int son_edit_num(son_t * h, const char * key, s32 v){
 }
 
 int son_edit_str(son_t * h, const char * key, const char * v){
-	return edit_raw_data(h, key, v, strlen(v), SON_STRING);
+	return edit_raw_data(h, key, v, strlen(v)+1, SON_STRING);
 }
 
-int son_edit_data(son_t * h, const char * key,  void * data, son_size_t size){
+int son_edit_data(son_t * h, const char * key, const void * data, son_size_t size){
 	return edit_raw_data(h, key, data, size, SON_DATA);
 }
 
-int son_edit_bool(son_t * h, const char * key, son_bool_t v){
+int son_edit_bool(son_t * h, const char * key, int v){
 	size_t pos;
 	son_store_t store;
 	son_marker_t type;
@@ -961,6 +1016,7 @@ int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t siz
 	}
 
 	if( store_type(&son) != new_data_marker ){
+		h->err = SON_ERR_EDIT_TYPE_MISMATCH;
 		return -1;
 	}
 

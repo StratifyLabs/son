@@ -1,4 +1,4 @@
-/*! \file */ //Copyright 2011-2016 Tyler Gilbert; All Rights Reserved
+//Copyright 2011-2016 Tyler Gilbert; All Rights Reserved
 
 #ifndef SON_PHY_H_
 #define SON_PHY_H_
