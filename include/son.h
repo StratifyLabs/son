@@ -211,8 +211,6 @@ void son_set_driver(son_t * h, void * driver);
  */
 int son_get_error(son_t * h);
 
-static inline void son_reset(son_t * h){ son_phy_lseek(&(h->phy), 0, SEEK_SET); }
-
 
 /*! \details Exports the data in an open SON file to JSON.
  *
@@ -734,6 +732,7 @@ int son_edit_bool(son_t * h, const char * access, int value);
 
 typedef struct MCU_PACK {
 	u32 version;
+	int (*get_error)(son_t * h);
 	int (*create)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 	int (*append)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 	int (*open)(son_t * h, const char * name);

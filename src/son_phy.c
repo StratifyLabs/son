@@ -25,7 +25,7 @@ int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode
 		if( (flags & SON_O_ACCESS) == SON_O_RDONLY ){
 			sprintf(open_code, "r");
 		} else if( ((flags & SON_O_ACCESS) == SON_O_RDWR) && (flags & SON_O_CREAT) ){
-			sprintf(open_code, "wb");
+			sprintf(open_code, "wb+");
 		} else {
 			sprintf(open_code, "r+");
 		}

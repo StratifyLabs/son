@@ -12,8 +12,9 @@
 #include "son.h"
 #include "son_phy.h"
 
-typedef struct {
+typedef struct MCU_PACK {
 	u16 version;
+	u16 resd;
 } son_hdr_t;
 
 typedef union {
@@ -62,8 +63,8 @@ static int store_seek(son_t * h, const char * access, son_store_t * store, son_s
 static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
 static int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v, son_size_t size);
 static int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_value_t new_data_marker);
-static int write_open_marker(son_t * h, const char * key, u8 type);
-static int write_close_marker(son_t * h);
+static int write_open_type(son_t * h, const char * key, u8 type);
+static int write_close_type(son_t * h);
 
 static char * is_token_array(char * tok, son_size_t * index);
 static int seek_array_key(son_t * h, son_size_t ind, son_store_t * store, son_size_t * size);
@@ -164,7 +165,7 @@ u32 store_calc_checksum(son_store_t * store){
 	return checksum;
 }
 
-int write_open_marker(son_t * h, const char * key, u8 type){
+int write_open_type(son_t * h, const char * key, u8 type){
 	son_store_t store;
 	size_t pos;
 
@@ -198,7 +199,7 @@ int write_open_marker(son_t * h, const char * key, u8 type){
 	return -1;
 }
 
-int write_close_marker(son_t * h){
+int write_close_type(son_t * h){
 	son_size_t pos;
 	son_size_t current;
 	son_store_t store;
@@ -233,6 +234,12 @@ int write_close_marker(son_t * h){
 	}
 	h->err = SON_ERR_STACK_OVERFLOW;
 	return -1;
+}
+
+int son_get_error(son_t * h){
+	int err = h->err;
+	h->err = SON_ERR_NONE;
+	return err;
 }
 
 int son_open(son_t * h, const char * name){
@@ -333,7 +340,7 @@ int son_close(son_t * h){
 
 	if( h->stack != 0 ){
 		while( h->stack_loc > 0 ){
-			if( write_close_marker(h) < 0 ){
+			if( write_close_type(h) < 0 ){
 				return -1;
 			}
 		}
@@ -350,19 +357,19 @@ int son_close(son_t * h){
 
 
 int son_open_obj(son_t * h, const char * key){
-	return write_open_marker(h, key, SON_OBJ);
+	return write_open_type(h, key, SON_OBJ);
 }
 
 int son_close_obj(son_t * h){
-	return write_close_marker(h);
+	return write_close_type(h);
 }
 
 int son_open_data(son_t * h, const char * key){
-	return write_open_marker(h, key, SON_DATA);
+	return write_open_type(h, key, SON_DATA);
 }
 
 int son_close_data(son_t * h){
-	return write_close_marker(h);
+	return write_close_type(h);
 }
 
 void store_insert_key(son_store_t * son, const char * key){
@@ -371,11 +378,11 @@ void store_insert_key(son_store_t * son, const char * key){
 }
 
 int son_open_array(son_t * h, const char * key){
-	return write_open_marker(h, key, SON_ARRAY);
+	return write_open_type(h, key, SON_ARRAY);
 }
 
 int son_close_array(son_t * h){
-	return write_close_marker(h);
+	return write_close_type(h);
 }
 
 int son_write_str(son_t * h, const char * key, const char * v){
@@ -804,6 +811,8 @@ int son_to_json(son_t * h, const char * path){
 	son_phy_t phy;
 
 	memset(&phy, 0, sizeof(phy));
+
+	phy_lseek_set(h, sizeof(son_hdr_t));
 
 	u8 type;
 

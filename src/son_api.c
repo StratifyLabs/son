@@ -4,6 +4,7 @@
 
 const son_api_t m_son_api = {
 		.version = SON_VERSION,
+		.get_error = son_get_error,
 		.create = son_create,
 		.append = son_append,
 		.open = son_open,
