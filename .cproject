@@ -149,16 +149,16 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SON"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/stfy"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/sapi"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/StratifyLib"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/son"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SON/build_debug_armv7m"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/stfy/build_debug_armv7m"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/sapi/build_debug_armv7m"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/StratifyLib/build_debug_son_armv7m"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/son/build_debug_son_armv7m"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/son/build_debug_armv7m"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="SON" srcPrefixMapping="" srcRootPath=""/>
-						<entry flags="RESOLVED" kind="libraryFile" name="stfy" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="sapi" srcPrefixMapping="" srcRootPath=""/>
 						<entry flags="RESOLVED" kind="libraryFile" name="StratifyLib" srcPrefixMapping="" srcRootPath=""/>
 						<entry flags="RESOLVED" kind="libraryFile" name="son" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
@@ -257,17 +257,17 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SON"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/stfy"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/sapi"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/StratifyLib"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/son"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SON/build_debug_armv7em"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/stfy/build_debug_armv7em"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/sapi/build_debug_armv7em"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/StratifyLib/build_debug_son_armv7em"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/StratifyLib/build_debug_son_armv7em_fpu"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/son/build_debug_son_armv7em_fpu"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/son/build_debug_armv7em_fpu"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="SON" srcPrefixMapping="" srcRootPath=""/>
-						<entry flags="RESOLVED" kind="libraryFile" name="stfy" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="sapi" srcPrefixMapping="" srcRootPath=""/>
 						<entry flags="RESOLVED" kind="libraryFile" name="StratifyLib" srcPrefixMapping="" srcRootPath=""/>
 						<entry flags="RESOLVED" kind="libraryFile" name="son" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
