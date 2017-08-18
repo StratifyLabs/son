@@ -124,11 +124,6 @@ extern "C" {
 #endif
 
 
-#ifdef __link
-#include <iface/link.h>
-#endif
-
-
 /*! \addtogroup FILES File Handling (Create/Append/Open/Close)
  * @{
  */
