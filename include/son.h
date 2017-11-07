@@ -172,25 +172,25 @@ typedef struct {
  * value is set when a son_* function does not complete successfully.
  */
 typedef enum {
-	SON_ERR_NONE /*! This value indicates no error has occurred. */,
-	SON_ERR_NO_ROOT /*! This error happens when a top level object or array is not created. */,
-	SON_ERR_OPEN_IO /*! This error happens if there is an IO failure to create or open a file (run perror() for more info). */,
-	SON_ERR_READ_IO /*! This error happens when an IO read operation fails (run perror() for more info). */,
-	SON_ERR_WRITE_IO /*! This error happens when an IO write operation fails (run perror() for more info). */,
-	SON_ERR_CLOSE_IO /*! This error happens when an IO close operation fails (run perror() for more info). */,
-	SON_ERR_SEEK_IO /*! This error happens when an IO seek operation fails (run perror() for more info). */,
-	SON_ERR_READ_CHECKSUM /*! This error happens when the data in the file has a invalid checksum which indicates a corrupted file or bad file format. */,
-	SON_ERR_CANNOT_APPEND /*! This error happens when an append is attempted on a file that has not been saved for appending */,
-	SON_ERR_CANNOT_WRITE /*! This error happens if a write is attempted on a file that has been opened for reading */,
-	SON_ERR_CANNOT_READ /*! This error happens if a read is attempted on a file that has been opened for writing or appending */,
-	SON_ERR_INVALID_ROOT /*! This error happens when the root object is not valid (usually a bad file format or corrupted file). */,
-	SON_ERR_ARRAY_INDEX_NOT_FOUND /*! This error happens when an array index could not be found */,
-	SON_ERR_ACCESS_TOO_LONG /*! This error happens if the \a access parameter len exceeds \a SON_ACCESS_MAX_USER_SIZE.  */,
-	SON_ERR_KEY_NOT_FOUND /*! This error happens when the key specified by the \a access parameter could not be found. */,
-	SON_ERR_STACK_OVERFLOW /*! This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
-	SON_ERR_INVALID_KEY /*! This happens if an empty key is passed to anything but the root object. */,
-	SON_ERR_CANNOT_CONVERT /*! This happens if a read is tried by the base data can't be converted */,
-	SON_ERR_EDIT_TYPE_MISMATCH /*! This happens if a value is edited with a function that doesn't match the base type */
+	SON_ERR_NONE /*! 0: This value indicates no error has occurred. */,
+	SON_ERR_NO_ROOT /*! 1: This error happens when a top level object or array is not created. */,
+	SON_ERR_OPEN_IO /*! 2: This error happens if there is an IO failure to create or open a file (run perror() for more info). */,
+	SON_ERR_READ_IO /*! 3: This error happens when an IO read operation fails (run perror() for more info). */,
+	SON_ERR_WRITE_IO /*! 4: This error happens when an IO write operation fails (run perror() for more info). */,
+	SON_ERR_CLOSE_IO /*! 5: This error happens when an IO close operation fails (run perror() for more info). */,
+	SON_ERR_SEEK_IO /*! 6: This error happens when an IO seek operation fails (run perror() for more info). */,
+	SON_ERR_READ_CHECKSUM /*! 7: This error happens when the data in the file has a invalid checksum which indicates a corrupted file or bad file format. */,
+	SON_ERR_CANNOT_APPEND /*! 8: This error happens when an append is attempted on a file that has not been saved for appending */,
+	SON_ERR_CANNOT_WRITE /*! 9: This error happens if a write is attempted on a file that has been opened for reading */,
+	SON_ERR_CANNOT_READ /*! 10: This error happens if a read is attempted on a file that has been opened for writing or appending */,
+	SON_ERR_INVALID_ROOT /*! 11: This error happens when the root object is not valid (usually a bad file format or corrupted file). */,
+	SON_ERR_ARRAY_INDEX_NOT_FOUND /*! 12: This error happens when an array index could not be found */,
+	SON_ERR_ACCESS_TOO_LONG /*! 13: This error happens if the \a access parameter len exceeds \a SON_ACCESS_MAX_USER_SIZE.  */,
+	SON_ERR_KEY_NOT_FOUND /*! 14: This error happens when the key specified by the \a access parameter could not be found. */,
+	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
+	SON_ERR_INVALID_KEY /*! 16: This happens if an empty key is passed to anything but the root object. */,
+	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted */,
+	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type */
 } son_err_t;
 
 

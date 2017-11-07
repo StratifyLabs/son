@@ -244,6 +244,7 @@ int son_get_error(son_t * h){
 
 int son_open(son_t * h, const char * name){
 
+	//open for read only -- stack is not used
 	h->stack_loc = 0;
 	h->stack = 0;
 	h->stack_size = 0;
@@ -264,6 +265,7 @@ int son_edit(son_t * h, const char * name){
 	son_phy_t * phy;
 	phy = &(h->phy);
 
+	//open for edit only -- stack is not used
 	h->stack_loc = 0;
 	h->stack = 0;
 	h->stack_size = 0;
@@ -288,6 +290,10 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 		return -1;
 	}
 
+	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
+
 	//check to see if parent object size is 0
 	if( store_read(h, &store) > 0 ){
 		h->stack = stack;
@@ -295,8 +301,12 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 		h->stack_loc = 0;
 
 		//push the root object location onto the stack
-		h->stack[h->stack_loc].pos = 0;
-		h->stack_loc++;
+		if( h->stack_loc < h->stack_size ){
+			h->stack[h->stack_loc].pos = sizeof(son_hdr_t);
+			h->stack_loc++;
+		} else {
+			h->err = SON_ERR_STACK_OVERFLOW;
+		}
 
 		phy_lseek_set(h, store_next(&store));
 		return 0;
@@ -833,6 +843,7 @@ int son_to_json(son_t * h, const char * path){
 
 	//create a new file
 	if( son_phy_open(&phy, path, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
+		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
 
