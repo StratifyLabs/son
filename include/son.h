@@ -180,7 +180,7 @@ typedef enum {
 	SON_ERR_CLOSE_IO /*! 5: This error happens when an IO close operation fails (run perror() for more info). */,
 	SON_ERR_SEEK_IO /*! 6: This error happens when an IO seek operation fails (run perror() for more info). */,
 	SON_ERR_READ_CHECKSUM /*! 7: This error happens when the data in the file has a invalid checksum which indicates a corrupted file or bad file format. */,
-	SON_ERR_CANNOT_APPEND /*! 8: This error happens when an append is attempted on a file that has not been saved for appending */,
+	SON_ERR_CANNOT_APPEND /*! 8: This error happens when an append is attempted on a file that has not been opened for appending */,
 	SON_ERR_CANNOT_WRITE /*! 9: This error happens if a write is attempted on a file that has been opened for reading */,
 	SON_ERR_CANNOT_READ /*! 10: This error happens if a read is attempted on a file that has been opened for writing or appending */,
 	SON_ERR_INVALID_ROOT /*! 11: This error happens when the root object is not valid (usually a bad file format or corrupted file). */,
@@ -189,8 +189,8 @@ typedef enum {
 	SON_ERR_KEY_NOT_FOUND /*! 14: This error happens when the key specified by the \a access parameter could not be found. */,
 	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
 	SON_ERR_INVALID_KEY /*! 16: This happens if an empty key is passed to anything but the root object. */,
-	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted */,
-	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type */
+	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted. */,
+	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type. */
 } son_err_t;
 
 

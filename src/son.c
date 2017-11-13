@@ -447,7 +447,7 @@ int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v
 		//stack size is set to zero when the file is opened for read only
 		h->err = SON_ERR_CANNOT_WRITE;
 		return -1;
-	} else if ( key[0] == 0 ){
+	} else if ( (key == 0) || (key[0] == 0) ){
 		h->err = SON_ERR_INVALID_KEY;
 		return -1;
 	}
