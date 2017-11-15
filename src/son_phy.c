@@ -110,22 +110,120 @@ int son_phy_close(son_phy_t * phy){
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 
+static int calc_bytes_left(son_phy_t * phy, int nbyte);
+static int phy_read_image(son_phy_t * phy, void * buffer, u32 nbyte);
+static int phy_write_image(son_phy_t * phy, const void * buffer, u32 nbyte);
+static int phy_lseek_image(son_phy_t * phy, int32_t offset, int whence);
+static int phy_close_image(son_phy_t * phy);
+
+int son_phy_open_image(son_phy_t * phy, void * image, u32 size){
+	phy->image = 0;
+	phy->image_size = 0;
+	phy->image_offset = 0;
+	phy->fd = -1;
+	if( image ){
+		phy->image = image;
+	} else {
+		phy->fd = -2;
+		phy->image = malloc(size);
+		if( phy->image == 0 ){
+			return -1;
+		}
+	}
+	phy->image_size = size;
+	return 0;
+}
 
 int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode){
+	phy->image = 0;
+	phy->image_offset = 0;
+	phy->image_size = 0;
 	phy->fd = open(name, flags, mode);
 	if( phy->fd < 0 ){
 		return -1;
 	}
 	return 0;
 }
-int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte){ return read(phy->fd, buffer, nbyte); }
-int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){ return write(phy->fd, buffer, nbyte); }
-int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){ return lseek(phy->fd, offset, whence); }
-int son_phy_close(son_phy_t * phy){ return close(phy->fd); }
 
+int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte){
+	if( phy->image ){
+		return phy_read_image(phy, buffer, nbyte);
+	}
+	return read(phy->fd, buffer, nbyte);
+}
 
+int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){
+	if( phy->image ){
+		return phy_write_image(phy, buffer, nbyte);
+	}
+	return write(phy->fd, buffer, nbyte);
+}
 
+int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){
+	if( phy->image ){
+		return phy_lseek_image(phy, offset, whence);
+	}
+	return lseek(phy->fd, offset, whence);
+}
+
+int son_phy_close(son_phy_t * phy){
+	if( phy->image ){
+		return phy_close_image(phy);
+	}
+	return close(phy->fd);
+}
+
+int calc_bytes_left(son_phy_t * phy, int nbyte){
+	if( phy->image_offset + nbyte >= phy->image_size ){
+		nbyte = phy->image_size - phy->image_offset;
+	}
+	return nbyte;
+}
+
+int phy_read_image(son_phy_t * phy, void * buffer, u32 nbyte){
+	int bytes = calc_bytes_left(phy, nbyte);
+	if( bytes ){
+		memcpy(buffer, phy->image + phy->image_offset, bytes);
+		phy->image_offset += bytes;
+		return bytes;
+	}
+	return 0;
+}
+
+int phy_write_image(son_phy_t * phy, const void * buffer, u32 nbyte){
+	int bytes = calc_bytes_left(phy, nbyte);
+	if( bytes ){
+		memcpy(phy->image + phy->image_offset, buffer, bytes);
+		phy->image_offset += bytes;
+		return bytes;
+	}
+	return 0;
+}
+
+int phy_lseek_image(son_phy_t * phy, int32_t offset, int whence){
+	switch(whence){
+	case SEEK_SET: phy->image_offset = offset; break;
+	case SEEK_CUR: phy->image_offset += offset; break;
+	case SEEK_END: phy->image_offset = phy->image_size + offset; break;
+	}
+	if( phy->image_offset > phy->image_size ){
+		phy->image_offset = phy->image_size;
+	}
+	return phy->image_offset;
+}
+
+int phy_close_image(son_phy_t * phy){
+	if( phy->fd == -2 ){
+		free(phy->image);
+	}
+	phy->image = 0;
+	phy->image_size = 0;
+	phy->image_offset = 0;
+	return 0;
+}
 
 
 #endif

@@ -84,8 +84,8 @@
  * @{
  */
 
-#define SON_STR_VERSION "0.0.2"
-#define SON_VERSION 0x0002
+#define SON_STR_VERSION "0.3"
+#define SON_VERSION 0x0003
 #include "son_phy.h"
 
 /*! \brief SON Size Type */
@@ -158,12 +158,15 @@ typedef struct {
  *
  * \sa son_create(), son_append()
  */
-typedef struct {
+typedef struct MCU_PACK {
 	son_phy_t phy /* Internal use only */;
 	son_stack_t * stack /* Internal use only */;
-	size_t stack_size /* Internal use only */;
-	size_t stack_loc /* Internal use only */;
+	u16 stack_size /* Internal use only */;
+	u16 stack_loc /* Internal use only */;
 	u32 err /* Internal use only */;
+#if defined __StratifyOS__
+	u32 checksum;
+#endif
 } son_t;
 
 
@@ -190,7 +193,8 @@ typedef enum {
 	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
 	SON_ERR_INVALID_KEY /*! 16: This happens if an empty key is passed to anything but the root object. */,
 	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted. */,
-	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type. */
+	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type. */,
+	SON_ERR_HANDLE_CHECKSUM /*! 19: This happens if the handle is modified outside of a call to the SON library. */
 } son_err_t;
 
 
@@ -214,6 +218,19 @@ int son_get_error(son_t * h);
  * @return Less than zero for an error
  */
 int son_to_json(son_t * h, const char * path);
+
+
+/*! \details Creates a memory area where SON objects can be stored.
+ *
+ *  @param h A pointer to the handle
+ *  @param image A pointer to the memory image
+ *  @param nbyte The number of bytes in the memory image
+ *  @param stack The SON stack
+ *  @param stack_size The number of entries in the SON stack
+ *
+ *
+ */
+int son_create_image(son_t * h, void * image, int nbyte, son_stack_t * stack, size_t stack_size);
 
 /*! \details Creates a new SON file.
  *
@@ -305,6 +322,16 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
  *
  */
 int son_open(son_t * h, const char * name);
+
+/*! \details Opens a memory image for reading.
+ *
+ *  @param h A pointer to the handle
+ *  @param image A pointer to the memory image
+ *  @param nbyte The number of bytes in the memory image
+ *
+ *
+ */
+int son_open_image(son_t * h, void * image, int nbyte);
 
 /*! \details Closes a file that was opened or created with
  * son_create(), son_append(), or son_open().
@@ -631,6 +658,10 @@ int son_read_bool(son_t *h, const char * access);
 
 /*! \details Opens a file for editing.
  *
+ * @param h A pointer to the handle
+ * @param name The name of the file to open
+ * @return Less than zero for an error
+ *
  * For variable length data types (SON_DATA and SON_STRING), the data
  * can be modified but the size of the data is fixed. Writing a string
  * that is shorter will work as expected. Writing a string (or data
@@ -641,12 +672,17 @@ int son_read_bool(son_t *h, const char * access);
  * used to edit the value (no conversion is performed). An error
  * (SON_ERR_EDIT_TYPE_MISMATCH) will be set if this is attempted.
  *
- * @param h A pointer to the handle
- * @param name The name of the file to open
- * @return Less than zero for an error
- *
  */
 int son_edit(son_t * h, const char * name);
+
+/*! \details Opens an image for editing.
+ *
+ * @param h A pointer to the handle
+ * @param image A pointer to the memory image
+ * @param nbyte The number of bytes in the image
+ *
+ */
+int son_edit_image(son_t * h, void * image, int nbyte);
 
 /*! \details Edits a float value.
  *
@@ -729,8 +765,10 @@ typedef struct MCU_PACK {
 	u32 version;
 	int (*get_error)(son_t * h);
 	int (*create)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+	int (*create_image)(son_t * h, void * image, int nbyte, son_stack_t * stack, size_t stack_size);
 	int (*append)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
 	int (*open)(son_t * h, const char * name);
+	int (*open_image)(son_t * h, void * image, int nbyte);
 	int (*close)(son_t * h);
 	int (*to_json)(son_t * h, const char * path);
 	int (*open_obj)(son_t * h, const char * key);
@@ -756,6 +794,7 @@ typedef struct MCU_PACK {
 	int (*read_bool)(son_t *h, const char * key);
 	int (*seek)(son_t * h, const char * access, son_size_t * data_size);
 	int (*edit)(son_t * h, const char * name);
+	int (*edit_image)(son_t * h, void * image, int nbyte);
 	int (*edit_float)(son_t * h, const char * key, float v);
 	int (*edit_data)(son_t * h, const char * key, const void * data, son_size_t size);
 	int (*edit_str)(son_t * h, const char * key, const char *v);

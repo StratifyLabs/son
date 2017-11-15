@@ -9,6 +9,13 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#if 0
+#include <cortexm/cortexm.h>
+#else
+#define cortexm_assign_zero_sum32(x,y)
+#define cortexm_verify_zero_sum32(x,y) 0
+#endif
+
 #include "son.h"
 #include "son_phy.h"
 
@@ -48,6 +55,9 @@ typedef struct MCU_PACK {
 
 #define SON_BUFFER_SIZE 32
 
+static void assign_checksum(son_t * h);
+static int verify_checksum(son_t * h);
+
 static u8 store_type(const son_store_t * store);
 static void store_set_type(son_store_t * store, u8 type);
 static u32 store_next(const son_store_t * store);
@@ -59,6 +69,10 @@ static u32 store_calc_checksum(son_store_t * store);
 static int store_read(son_t * h, son_store_t * store);
 static int store_write(son_t * h, son_store_t * store);
 static int store_seek(son_t * h, const char * access, son_store_t * store, son_size_t * data_size);
+
+static int open_from_phy(son_t * h);
+static int create_from_phy(son_t * h, son_stack_t * stack, size_t stack_size);
+static int edit_from_phy(son_t * h);
 
 static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
 static int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v, son_size_t size);
@@ -96,6 +110,18 @@ void son_set_driver(son_t * h, void * handle){
 #define SON_O_TRUNC O_TRUNC
 #endif
 
+
+void assign_checksum(son_t * h){
+	cortexm_assign_zero_sum32(h, CORTEXM_ZERO_SUM32_COUNT(son_t));
+}
+
+int verify_checksum(son_t * h){
+	if( cortexm_verify_zero_sum32(h, CORTEXM_ZERO_SUM32_COUNT(son_t)) != 0){
+		h->err = SON_ERR_HANDLE_CHECKSUM;
+		return -1;
+	}
+	return 0;
+}
 
 
 u8 store_type(const son_store_t * son){
@@ -168,6 +194,7 @@ u32 store_calc_checksum(son_store_t * store){
 int write_open_type(son_t * h, const char * key, u8 type){
 	son_store_t store;
 	size_t pos;
+	int ret;
 
 	if( h->stack_loc < h->stack_size ){
 
@@ -192,7 +219,8 @@ int write_open_type(son_t * h, const char * key, u8 type){
 		store_set_type(&store, type);
 		store_set_next(&store, 0);
 
-		return store_write(h, &store);
+		ret = store_write(h, &store);
+		return ret;
 	}
 
 	h->err = SON_ERR_STACK_OVERFLOW;
@@ -203,6 +231,7 @@ int write_close_type(son_t * h){
 	son_size_t pos;
 	son_size_t current;
 	son_store_t store;
+
 	//write the size of the object
 	if( h->stack_loc > 0 ){
 		h->stack_loc--;
@@ -210,7 +239,9 @@ int write_close_type(son_t * h){
 		current = phy_lseek_current(h, 0);
 
 		//seek to the store of the open marker
-		if( phy_lseek_set(h, pos) < 0 ){ return -1; }
+		if( phy_lseek_set(h, pos) < 0 ){
+			return -1;
+		}
 
 		//read the current store
 		if( store_read(h, &store) < 0 ){
@@ -218,13 +249,17 @@ int write_close_type(son_t * h){
 		}
 
 		//seek back to the store position
-		if( phy_lseek_set(h, pos) < 0 ){ return -1; }
+		if( phy_lseek_set(h, pos) < 0 ){
+			return -1;
+		}
 
 		//update the store position
 		store_set_next(&store, current);
 
 		//save the store
-		if( store_write(h, &store) < 0 ){ return -1; }
+		if( store_write(h, &store) < 0 ){
+			return -1;
+		}
 
 		if( phy_lseek_set(h, current) < 0 ){
 			return -1;
@@ -239,20 +274,35 @@ int write_close_type(son_t * h){
 int son_get_error(son_t * h){
 	int err = h->err;
 	h->err = SON_ERR_NONE;
+	if( err != SON_ERR_HANDLE_CHECKSUM ){
+
+	}
 	return err;
 }
 
 int son_open(son_t * h, const char * name){
-
 	//open for read only -- stack is not used
-	h->stack_loc = 0;
-	h->stack = 0;
-	h->stack_size = 0;
-
 	if( son_phy_open(&(h->phy), name, SON_O_RDONLY, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
+	return open_from_phy(h);
+}
+
+int son_open_image(son_t * h, void * image, int nbyte){
+	//open for read only -- stack is not used
+	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+		h->err = SON_ERR_OPEN_IO;
+		return -1;
+	}
+	return open_from_phy(h);
+}
+
+int open_from_phy(son_t * h){
+
+	h->stack_loc = 0;
+	h->stack = 0;
+	h->stack_size = 0;
 
 	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
 		return -1;
@@ -261,19 +311,31 @@ int son_open(son_t * h, const char * name){
 	return 0;
 }
 
-int son_edit(son_t * h, const char * name){
-	son_phy_t * phy;
-	phy = &(h->phy);
+int son_edit_image(son_t * h, void * image, int nbyte){
+	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+		h->err = SON_ERR_OPEN_IO;
+		return -1;
+	}
 
+	return edit_from_phy(h);
+}
+
+int son_edit(son_t * h, const char * name){
+
+	if( son_phy_open(&(h->phy), name, SON_O_RDWR, 0) < 0 ){
+		h->err = SON_ERR_OPEN_IO;
+		return -1;
+	}
+
+	return edit_from_phy(h);
+}
+
+
+int edit_from_phy(son_t * h){
 	//open for edit only -- stack is not used
 	h->stack_loc = 0;
 	h->stack = 0;
 	h->stack_size = 0;
-
-	if( son_phy_open(phy, name, SON_O_RDWR, 0) < 0 ){
-		h->err = SON_ERR_OPEN_IO;
-		return -1;
-	}
 
 	if( phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
 		return -1;
@@ -309,6 +371,7 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 		}
 
 		phy_lseek_set(h, store_next(&store));
+
 		return 0;
 
 	}
@@ -317,16 +380,29 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 	return -1;
 }
 
+int son_create_image(son_t * h, void * image, int nbyte, son_stack_t * stack, size_t stack_size){
+	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+		h->err = SON_ERR_OPEN_IO;
+		return -1;
+	}
+
+	return create_from_phy(h, stack, stack_size);
+}
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
 
-	son_hdr_t hdr;
 
 	if( son_phy_open(&(h->phy), name, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
 
+	return create_from_phy(h, stack, stack_size);
+}
+
+int create_from_phy(son_t * h, son_stack_t * stack, size_t stack_size){
+
+	son_hdr_t hdr;
 	hdr.version = SON_VERSION;
 
 	if( son_phy_write(&(h->phy), &hdr, sizeof(hdr)) != sizeof(hdr) ){
@@ -339,14 +415,13 @@ int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 	h->stack = stack;
 	h->stack_size = stack_size;
 	h->stack_loc = 0;
+
+
 	return 0;
 }
 
 int son_close(son_t * h){
 	int ret;
-	if( h->phy.fd < 0 ){
-		return 0;
-	}
 
 	if( h->stack != 0 ){
 		while( h->stack_loc > 0 ){
@@ -360,9 +435,9 @@ int son_close(son_t * h){
 	h->phy.fd = -1;
 	if( ret < 0 ){
 		h->err = SON_ERR_CLOSE_IO;
-		return -1;
 	}
-	return 0;
+
+	return ret;
 }
 
 
@@ -404,7 +479,6 @@ int son_write_num(son_t * h, const char * key, s32 v){
 	return write_raw_data(h, key, SON_NUMBER_S32, &v, sizeof(v));
 }
 
-
 int son_write_unum(son_t * h, const char * key, u32 v){
 	return write_raw_data(h, key, SON_NUMBER_U32, &v, sizeof(v));
 }
@@ -431,10 +505,12 @@ int son_write_data(son_t * h, const char * key, const void * v, son_size_t size)
 
 int son_write_open_data(son_t * h, const void * v, son_size_t size){
 	int ret;
+
 	ret = son_phy_write(&(h->phy), v, size);
 	if( ret < 0 ){
 		h->err = SON_ERR_WRITE_IO;
 	}
+
 	return ret;
 }
 
@@ -464,12 +540,15 @@ int write_raw_data(son_t * h, const char * key, son_value_t type, const void * v
 	pos = phy_lseek_current(h, 0);
 	store_set_next(&store, pos + sizeof(son_store_t) + size);
 
-	if( store_write(h, &store) != 0 ){ return -1; }
+	if( store_write(h, &store) != 0 ){
+		return -1;
+	}
 
 	ret = son_phy_write(&(h->phy), v, size);
 	if( ret < 0 ){
 		h->err = SON_ERR_WRITE_IO;
 	}
+
 	return ret;
 }
 
@@ -816,9 +895,9 @@ static void print_indent(int indent, son_phy_t * phy){
 
 int son_to_json(son_t * h, const char * path){
 	int is_array;
-
 	son_store_t store;
 	son_phy_t phy;
+
 
 	memset(&phy, 0, sizeof(phy));
 
@@ -1033,6 +1112,7 @@ int son_edit_bool(son_t * h, const char * key, int v){
 int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t size, son_value_t new_data_marker){
 	son_size_t data_size;
 	son_store_t son;
+	int ret;
 
 	if( store_seek(h, key, &son, &data_size) < 0 ){
 		return -1;
@@ -1048,5 +1128,8 @@ int edit_raw_data(son_t * h, const char * key, const void * data, son_size_t siz
 		size = data_size;
 	}
 
-	return son_phy_write(&(h->phy), data, size);
+	ret =  son_phy_write(&(h->phy), data, size);
+
+	return ret;
+
 }

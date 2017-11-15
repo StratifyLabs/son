@@ -29,7 +29,7 @@ typedef int64_t s64;
 
 #if !defined __StratifyOS__
 
-typedef struct {
+typedef struct MCU_PACK {
 	FILE * f;
 	int fd;
 #if defined __link
@@ -77,8 +77,11 @@ typedef struct {
 #define SON_O_CREAT O_CREAT
 #define SON_O_TRUNC O_TRUNC
 
-typedef struct {
+typedef struct MCU_PACK {
 	int fd;
+	void * image;
+	u16 image_size;
+	u16 image_offset;
 } son_phy_t;
 
 #endif
@@ -89,6 +92,7 @@ extern "C" {
 #endif
 
 void son_phy_set_driver(son_phy_t * phy, void * driver);
+int son_phy_open_image(son_phy_t * phy, void * image, u32 size);
 int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode);
 int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte);
 int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte);
