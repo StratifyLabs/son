@@ -3,6 +3,13 @@
 
 #include "son_local.h"
 
+#if 0
+#include <cortexm/cortexm.h>
+#else
+#define cortexm_assign_zero_sum32(x,y)
+#define cortexm_verify_zero_sum32(x,y) 0
+#endif
+
 static void phy_fprintf(son_phy_t * phy, const char * format, ...);
 static void print_indent(int indent, son_phy_t * phy);
 static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
@@ -26,47 +33,51 @@ void son_set_driver(son_t * h, void * handle){
 
 int son_get_error(son_t * h){
 	int err = h->err;
-	h->err = SON_ERR_NONE;
 	if( err != SON_ERR_HANDLE_CHECKSUM ){
-
+		h->err = SON_ERR_NONE;
+		son_local_assign_checksum(h);
 	}
 	return err;
 }
 
 int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
 	son_store_t store;
+	int ret = 0;
 
 	if( son_phy_open(&(h->phy), name, SON_O_RDWR, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
-		return -1;
-	}
+		ret = -1;
+	} else {
 
-	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
-		return -1;
-	}
-
-	//check to see if parent object size is 0
-	if( son_local_store_read(h, &store) > 0 ){
-		h->stack = stack;
-		h->stack_size = stack_size;
-		h->stack_loc = 0;
-
-		//push the root object location onto the stack
-		if( h->stack_loc < h->stack_size ){
-			h->stack[h->stack_loc].pos = sizeof(son_hdr_t);
-			h->stack_loc++;
+		if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
+			ret = -1;
 		} else {
-			h->err = SON_ERR_STACK_OVERFLOW;
+
+			//check to see if parent object size is 0
+			if( son_local_store_read(h, &store) > 0 ){
+				h->stack = stack;
+				h->stack_size = stack_size;
+				h->stack_loc = 0;
+
+				//push the root object location onto the stack
+				if( h->stack_loc < h->stack_size ){
+					h->stack[h->stack_loc].pos = sizeof(son_hdr_t);
+					h->stack_loc++;
+				} else {
+					h->err = SON_ERR_STACK_OVERFLOW;
+				}
+
+				son_local_phy_lseek_set(h, son_local_store_next(&store));
+
+			} else {
+				son_phy_close(&(h->phy));
+				ret = -1;
+			}
 		}
-
-		son_local_phy_lseek_set(h, son_local_store_next(&store));
-
-		return 0;
-
 	}
 
-	son_phy_close(&(h->phy));
-	return -1;
+	son_local_assign_checksum(h);
+	return ret;
 }
 
 int son_create_image(son_t * h, void * image, int nbyte, son_stack_t * stack, size_t stack_size){
@@ -79,8 +90,6 @@ int son_create_image(son_t * h, void * image, int nbyte, son_stack_t * stack, si
 }
 
 int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
-
-
 	if( son_phy_open(&(h->phy), name, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
@@ -128,11 +137,18 @@ int son_edit(son_t * h, const char * name){
 
 int son_seek(son_t * h, const char * access, son_size_t * data_size){
 	son_store_t son;
+
+	if( son_local_verify_checksum(h) < 0 ){ return -1; }
+
+	int ret = 0;
 	if( son_local_store_seek(h, access, &son, data_size) < 0 ){
-		return -1;
+		ret = -1;
+	} else {
+		ret = son_phy_lseek(&(h->phy), 0, SEEK_CUR);
 	}
 
-	return son_phy_lseek(&(h->phy), 0, SEEK_CUR);
+	son_local_assign_checksum(h);
+	return ret;
 }
 
 int son_to_json(son_t * h, const char * path){
@@ -242,28 +258,29 @@ u32 son_local_store_calc_checksum(son_store_t * store){
 }
 
 int open_from_phy(son_t * h){
+	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
 
 	h->stack_loc = 0;
 	h->stack = 0;
 	h->stack_size = 0;
 
-	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
-		return -1;
-	}
-
+	son_local_assign_checksum(h);
 	return 0;
 }
 
 int edit_from_phy(son_t * h){
+	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
+		return -1;
+	}
+
 	//open for edit only -- stack is not used
 	h->stack_loc = 0;
 	h->stack = 0;
 	h->stack_size = 0;
 
-	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
-		return -1;
-	}
-
+	son_local_assign_checksum(h);
 	return 0;
 }
 
@@ -280,6 +297,8 @@ int create_from_phy(son_t * h, son_stack_t * stack, size_t stack_size){
 	h->stack = stack;
 	h->stack_size = stack_size;
 	h->stack_loc = 0;
+
+	son_local_assign_checksum(h);
 	return 0;
 }
 

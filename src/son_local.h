@@ -3,6 +3,12 @@
 #ifndef SON_LOCAL_H_
 #define SON_LOCAL_H_
 
+#if !defined __StratifyOS__
+#if !defined MCU_USED
+#define MCU_UNUSED __attribute__((unused))
+#endif
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -13,13 +19,6 @@
 
 #include "son.h"
 #include "son_phy.h"
-
-#if 0
-#include <cortexm/cortexm.h>
-#else
-#define cortexm_assign_zero_sum32(x,y)
-#define cortexm_verify_zero_sum32(x,y) 0
-#endif
 
 #define SON_MARKER_MASK (0x0F)
 

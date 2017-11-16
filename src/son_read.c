@@ -149,27 +149,33 @@ int son_read_bool(son_t *h, const char * key){
 
 int son_local_read_raw_data(son_t * h, const char * access, void * data, son_size_t size, son_store_t * son){
 	son_size_t data_size;
+	int ret = 0;
+
+	if( son_local_verify_checksum(h) < 0 ){ return -1; }
 
 	//check to see if h is open for reading
 	if( h->stack_size != 0 ){
 		h->err = SON_ERR_CANNOT_READ;
-		return -1;
+		ret = -1;
+	} else {
+		if( son_local_store_seek(h, access, son, &data_size) < 0 ){
+			ret = -1;
+		} else {
+			memset(data, 0, size);
+			if( data_size > size ){
+				data_size = size;
+			}
+
+			if( son_phy_read(&(h->phy), data, data_size) != data_size ){
+				h->err = SON_ERR_READ_IO;
+				ret = -1;
+			} else {
+				ret = data_size;
+			}
+		}
 	}
 
-	if( son_local_store_seek(h, access, son, &data_size) < 0 ){
-		return -1;
-	}
+	son_local_assign_checksum(h);
 
-	memset(data, 0, size);
-	if( data_size > size ){
-		data_size = size;
-	}
-
-
-	if( son_phy_read(&(h->phy), data, data_size) != data_size ){
-		h->err = SON_ERR_READ_IO;
-		return -1;
-	}
-
-	return data_size;
+	return ret;
 }
