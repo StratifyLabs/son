@@ -3,11 +3,11 @@
 
 #include "son_local.h"
 
-#if 0
+#if defined __StratifyOS__
 #include <cortexm/cortexm.h>
 #else
 #define cortexm_assign_zero_sum32(x,y)
-#define cortexm_verify_zero_sum32(x,y) 0
+#define cortexm_verify_zero_sum32(x,y) 1
 #endif
 
 static void phy_fprintf(son_phy_t * phy, const char * format, ...);
@@ -80,8 +80,8 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 	return ret;
 }
 
-int son_create_image(son_t * h, void * image, int nbyte, son_stack_t * stack, size_t stack_size){
-	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, size_t stack_size){
+	if( son_phy_open_message(&(h->phy), message, nbyte) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
@@ -107,17 +107,17 @@ int son_open(son_t * h, const char * name){
 	return open_from_phy(h);
 }
 
-int son_open_image(son_t * h, void * image, int nbyte){
+int son_open_message(son_t * h, void * message, int nbyte){
 	//open for read only -- stack is not used
-	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+	if( son_phy_open_message(&(h->phy), message, nbyte) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
 	return open_from_phy(h);
 }
 
-int son_edit_image(son_t * h, void * image, int nbyte){
-	if( son_phy_open_image(&(h->phy), image, nbyte) < 0 ){
+int son_edit_message(son_t * h, void * message, int nbyte){
+	if( son_phy_open_message(&(h->phy), message, nbyte) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
 	}
@@ -196,7 +196,7 @@ void son_local_assign_checksum(son_t * h){
 }
 
 int son_local_verify_checksum(son_t * h){
-	if( cortexm_verify_zero_sum32(h, CORTEXM_ZERO_SUM32_COUNT(son_t)) != 0){
+	if( cortexm_verify_zero_sum32(h, CORTEXM_ZERO_SUM32_COUNT(son_t)) == 0){
 		h->err = SON_ERR_HANDLE_CHECKSUM;
 		return -1;
 	}
@@ -407,9 +407,17 @@ int son_local_store_seek(son_t * h, const char * access, son_store_t * son, son_
 	char acc_item[SON_ACCESS_NAME_CAPACITY];
 	son_size_t ind;
 
-	//phy_lseek_set(h, 0);
 	if( son_local_phy_lseek_set(h, sizeof(son_hdr_t)) < 0 ){
 		return -1;
+	}
+
+	if( (access == 0) || (access[0] == 0) ){
+		//return the root value
+		if( son_local_store_read(h, son) < 0 ){
+			return -1;
+		}
+		*data_size = son_local_store_next(son) - sizeof(son_hdr_t);
+		return 0;
 	}
 
 	if( strnlen(access, SON_ACCESS_NAME_SIZE) > (SON_ACCESS_MAX_USER_SIZE) ){

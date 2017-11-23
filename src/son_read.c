@@ -1,4 +1,4 @@
-/*! \file */ //Copyright 2011-2016 Tyler Gilbert; All Rights Reserved
+/*! \file */ //Copyright 2011-2017 Tyler Gilbert; All Rights Reserved
 
 
 #include "son_local.h"

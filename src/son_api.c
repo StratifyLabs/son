@@ -6,10 +6,10 @@ const son_api_t m_son_api = {
 		.version = SON_VERSION,
 		.get_error = son_get_error,
 		.create = son_create,
-		.create_image = son_create_image,
+		.create_message = son_create_message,
 		.append = son_append,
 		.open = son_open,
-		.open_image = son_open_image,
+		.open_message = son_open_message,
 		.close = son_close,
 		.to_json = son_to_json,
 		.open_obj = son_open_obj,
@@ -35,13 +35,16 @@ const son_api_t m_son_api = {
 		.read_bool = son_read_bool,
 		.seek = son_seek,
 		.edit = son_edit,
-		.edit_image = son_edit_image,
+		.edit_message = son_edit_message,
 		.edit_float = son_edit_float,
 		.edit_data = son_edit_data,
 		.edit_str = son_edit_str,
 		.edit_num = son_edit_num,
 		.edit_unum = son_edit_unum,
-		.edit_bool = son_edit_bool
+		.edit_bool = son_edit_bool,
+		.send_message = son_send_message,
+		.recv_message = son_recv_message,
+		.get_message_size = son_get_message_size
 };
 
 const son_api_t * son_api(){ return &m_son_api; }
