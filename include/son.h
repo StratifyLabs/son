@@ -122,8 +122,9 @@ typedef enum {
 /*! \brief SON Size Type */
 typedef u32 son_size_t;
 
-/*! \details Defines the maximum length of any given key
- * value.
+/*! \brief Defines the maximum length of any given key
+ * value. Values that exceed this length will
+ * be truncated.
  *
  * \showinitializer
  */
@@ -202,6 +203,24 @@ extern "C" {
  * like device FIFOs/SPI/UART, etc. The allows objects to be quickly and
  * easily shared between processes or over the network.
  *
+ * Here is an example of creating a message:
+ *
+ * \code
+ * int fd;
+ * son_t handle;
+ * son_stack_t stack[4];
+ * char buffer[512]
+ * son_create_message(&handle, buffer, 512, stack, 4);
+ * son_write_str(&handle, "first", "John");
+ * son_write_str(&handle, "last", "Doe");
+ * son_close(&handle);
+ *
+ * fd = open("/dev/uart0", O_RDWR | O_NONBLOCK);
+ *
+ * son_read_message(&handle, buffer, 512);
+ * son_send_message(&handle, fd, 1000); //send the message on the UART
+ * \endcode
+ *
  * @{
  *
  */
@@ -241,7 +260,6 @@ int son_edit_message(son_t * h, void * message, int nbyte);
  *
  * @param h A pointer to the SON handle
  * @param fd The open file descriptor to write the message to
- * @param nbytes The number of bytes in the message
  * @param timeout The max milliseconds to block between bytes before aborting
  * @return The number of bytes sent or less than zero for an error
  *
@@ -257,6 +275,7 @@ int son_edit_message(son_t * h, void * message, int nbyte);
  * son_write_str(&handle, "first", "John");
  * son_write_str(&handle, "last", "Doe");
  * son_close(&handle);
+ * \endcode
  *
  * //the buffer now contains a complete message and is ready to send
  *
@@ -324,7 +343,7 @@ int son_to_json(son_t * h, const char * path);
  * You also need to provide a stack. This is so the library can work
  * without using dynamic memory allocation. The \a stack_size needs to
  * be as large as the deepest depth of the data. For example, the
- * following JSON data has a depth of 3.
+ * following JSON data has a depth of 4.
  *
  * \code
  * {
@@ -415,7 +434,6 @@ int son_close(son_t * h);
 /*! \addtogroup WRITE Writing/Appending Values to Files
  * @{
  */
-
 
 /*! \details Starts a new object while creating
  * or appending values to a SON file.
