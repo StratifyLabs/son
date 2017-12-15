@@ -95,10 +95,13 @@ extern "C" {
 #endif
 
 void son_phy_set_driver(son_phy_t * phy, void * driver);
+void son_phy_msleep(int ms);
 int son_phy_open_message(son_phy_t * phy, void * message, u32 size);
 int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode);
 int son_phy_read(son_phy_t * phy, void * buffer, u32 nbyte);
 int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte);
+int son_phy_read_fileno(son_phy_t * phy, int fd, void * buffer, u32 nbyte);
+int son_phy_write_fileno(son_phy_t * phy, int fd, const void * buffer, u32 nbyte);
 int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence);
 int son_phy_close(son_phy_t * phy);
 

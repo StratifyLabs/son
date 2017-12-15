@@ -114,7 +114,11 @@ float son_read_float(son_t * h, const char * access){
 	case SON_TRUE: return 1.0;
 	case SON_FALSE: return 0.0;
 	case SON_NULL: return 0.0;
+#if defined __StratifyOS__
+	case SON_STRING: return atoff(buffer);
+#else
 	case SON_STRING: return atof(buffer);
+#endif
 	case SON_DATA: return 0.0;
 	}
 

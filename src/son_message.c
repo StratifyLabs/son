@@ -21,7 +21,7 @@ typedef struct MCU_PACK {
 	u32 checksum;
 } son_message_t;
 
-typedef int (*son_transfer_t)(int, void*, size_t);
+typedef int (*son_transfer_t)(son_phy_t * phy, int, void*, size_t);
 
 static int son_message_transfer_data(son_t * h, int fd, void *  data, int nbytes, int timeout, son_transfer_t transfer);
 static int son_message_recv_start(son_t * h, int fd, int timeout);
@@ -60,12 +60,12 @@ int son_send_message(son_t * h, int fd, int timeout){
 		msg.size = nbytes;
 		cortexm_assign_zero_sum32(&msg, CORTEXM_ZERO_SUM32_COUNT(son_message_t));
 
-		if( son_message_transfer_data(h, fd, &msg, sizeof(msg), timeout, (son_transfer_t)write) < 0 ){
+		if( son_message_transfer_data(h, fd, &msg, sizeof(msg), timeout, (son_transfer_t)son_phy_write_fileno) < 0 ){
 			//h->err is set by son_message_transfer_data()
 			return -1;
 		}
 
-		if( son_message_transfer_data(h, fd, h->phy.message, msg.size, timeout, (son_transfer_t)write) < 0 ){
+		if( son_message_transfer_data(h, fd, h->phy.message, msg.size, timeout, (son_transfer_t)son_phy_write_fileno) < 0 ){
 			//h->err is set by son_message_transfer_data()
 			return -1;
 		}
@@ -82,13 +82,13 @@ int son_recv_message(son_t * h, int fd, int timeout){
 
 	if( son_message_recv_start(h, fd, timeout) ){
 		msg.start = SON_MESSAGE_START;
-		if( son_message_transfer_data(h, fd, &msg.size, sizeof(msg)-sizeof(u32), timeout, read) >= 0 ){
+		if( son_message_transfer_data(h, fd, &msg.size, sizeof(msg)-sizeof(u32), timeout, (son_transfer_t)son_phy_read_fileno) >= 0 ){
 			if( cortexm_verify_zero_sum32(&msg, CORTEXM_ZERO_SUM32_COUNT(son_message_t)) ){ //see if msg.checksum is valid
 				memset(h->phy.message, 0, h->phy.message_size);
 				//now receive the actual data
 				s = msg.size < h->phy.message_size ? msg.size : h->phy.message_size;
 
-				if( son_message_transfer_data(h, fd, h->phy.message, s, timeout, read) < 0 ){
+				if( son_message_transfer_data(h, fd, h->phy.message, s, timeout, (son_transfer_t)son_phy_read_fileno) < 0 ){
 					ret = -1;
 				} else {
 					//successful reception of the message
@@ -96,8 +96,6 @@ int son_recv_message(son_t * h, int fd, int timeout){
 				}
 			}
 		}
-	} else {
-
 	}
 	return ret;
 }
@@ -108,10 +106,10 @@ int son_message_transfer_data(son_t * h, int fd, void *  data, int nbytes, int t
 	int count = 0;
 	do {
 		errno = 0;
-		ret = transfer(fd, data + bytes, nbytes - bytes);
+		ret = transfer(&(h->phy), fd, data + bytes, nbytes - bytes);
 		if( ret < 0 ){
 			if( errno == EAGAIN ){
-				usleep(1000);
+				son_phy_msleep(1);
 				count++;
 				if( count == timeout ){
 					h->err = SON_ERR_MESSAGE_TIMEOUT;
@@ -145,7 +143,7 @@ int son_message_recv_start(son_t * h, int fd, int timeout){
 	u8 start;
 	i = 0;
 	do {
-		if( son_message_transfer_data(h, fd, &c, 1, timeout, read) < 0 ){
+		if( son_message_transfer_data(h, fd, &c, 1, timeout, (son_transfer_t)son_phy_read_fileno) < 0 ){
 			return 0;
 		}
 		start = ((SON_MESSAGE_START >> (i*8)) & 0xff);

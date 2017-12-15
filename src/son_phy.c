@@ -86,6 +86,9 @@ int phy_close_message(son_phy_t * phy){
 
 #include <stdio.h>
 
+void son_phy_msleep(int ms){
+	usleep(ms*1000);
+}
 
 void son_phy_set_driver(son_phy_t * phy, void * driver){
 	phy->driver = driver;
@@ -158,6 +161,26 @@ int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){
 	}
 }
 
+int son_phy_read_fileno(son_phy_t * phy, int fd, void * buffer, u32 nbyte){
+#if defined __link
+	if( phy->driver ){
+		return link_read(phy->driver, fd, buffer, nbyte);
+	}
+#else
+	return -1;
+#endif
+}
+
+int son_phy_write_fileno(son_phy_t * phy, int fd, const void * buffer, u32 nbyte){
+#if defined __link
+	if( phy->driver ){
+		return link_write(phy->driver, fd, buffer, nbyte);
+	}
+#else
+	return -1;
+#endif
+}
+
 int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){
 	if( phy->message ){
 		return phy_lseek_message(phy, offset, whence);
@@ -201,6 +224,10 @@ int son_phy_close(son_phy_t * phy){
 #include <fcntl.h>
 #include <string.h>
 
+void son_phy_msleep(int ms){
+	usleep(ms*1000);
+}
+
 int son_phy_open(son_phy_t * phy, const char * name, int32_t flags, int32_t mode){
 	phy->message = 0;
 	phy->message_offset = 0;
@@ -224,6 +251,14 @@ int son_phy_write(son_phy_t * phy, const void * buffer, u32 nbyte){
 		return phy_write_message(phy, buffer, nbyte);
 	}
 	return write(phy->fd, buffer, nbyte);
+}
+
+int son_phy_read_fileno(son_phy_t * phy, int fd, void * buffer, u32 nbyte){
+	return read(fd, buffer, nbyte);
+}
+
+int son_phy_write_fileno(son_phy_t * phy, int fd, const void * buffer, u32 nbyte){
+	return write(fd, buffer, nbyte);
 }
 
 int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){
