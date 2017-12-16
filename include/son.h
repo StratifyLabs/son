@@ -238,7 +238,7 @@ extern "C" {
  *
  *
  */
-int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, size_t stack_size);
+int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size);
 
 /*! \details Opens a memory message for reading.
  *
@@ -330,7 +330,9 @@ int son_get_error(son_t * h);
  * @param path The path to the destination JSON file
  * @return Less than zero for an error
  */
-int son_to_json(son_t * h, const char * path);
+int son_to_json(son_t * h, const char * path, int (*callback)(void * context, const char * entry), void * context);
+
+typedef int (*son_to_json_callback_t)(void*, const char*);
 
 /*! \details Creates a new SON file.
  *
@@ -379,7 +381,7 @@ int son_to_json(son_t * h, const char * path);
  * \sa WRITE
  *
  */
-int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+int son_create(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 
 /*! \details Opens a file for appending. Items
  * written to the file will be added to the root object or array.
@@ -400,7 +402,7 @@ int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
  *
  * \sa  WRITE
  */
-int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+int son_append(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 
 /*! \details Opens a file for reading.
  *
@@ -654,10 +656,6 @@ int son_write_open_data(son_t * h, const void * data, son_size_t size);
  */
 int son_seek(son_t * h, const char * access, son_size_t * size);
 
-enum {
-	SON_SEEK_NEXT_SIBLING /*! Seek for the next sibling */,
-	SON_SEEK_NEXT_CHILD /*! Seek for the first child */
-};
 
 /*! \details Seeks the next key in the file and copies it to name.
  *
@@ -670,7 +668,7 @@ enum {
  *
  *
  */
-int son_seek_next(son_t * h, int child_or_sibling, char * name, son_value_t * type);
+int son_seek_next(son_t * h, char * name, son_value_t * type);
 
 /*! \details Reads the value specified by \a access as a string value.
  *
@@ -862,13 +860,13 @@ int son_edit_bool(son_t * h, const char * access, int value);
 typedef struct MCU_PACK {
 	u32 version;
 	int (*get_error)(son_t * h);
-	int (*create)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
-	int (*create_message)(son_t * h, void * message, int nbyte, son_stack_t * stack, size_t stack_size);
-	int (*append)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+	int (*create)(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
+	int (*create_message)(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size);
+	int (*append)(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 	int (*open)(son_t * h, const char * name);
 	int (*open_message)(son_t * h, void * message, int nbyte);
 	int (*close)(son_t * h);
-	int (*to_json)(son_t * h, const char * path);
+	int (*to_json)(son_t * h, const char * path, int (*callback)(void * context, const char * entry), void * context);
 	int (*open_obj)(son_t * h, const char * key);
 	int (*close_obj)(son_t * h);
 	int (*open_array)(son_t * h, const char * key);
@@ -902,7 +900,7 @@ typedef struct MCU_PACK {
 	int (*send_message)(son_t * h, int fd, int timeout);
 	int (*recv_message)(son_t * h, int fd, int timeout);
 	int (*get_message_size)(son_t * h);
-	int (*seek_next)(son_t * h, int child_or_sibling, char * name, son_value_t * type);
+	int (*seek_next)(son_t * h, char * name, son_value_t * type);
 } son_api_t;
 
 const son_api_t * son_api();

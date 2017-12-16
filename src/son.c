@@ -10,9 +10,17 @@
 #define cortexm_verify_zero_sum32(x,y) 1
 #endif
 
-static void phy_fprintf(son_phy_t * phy, const char * format, ...);
-static void print_indent(int indent, son_phy_t * phy);
-static void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy);
+static void phy_fputs(son_phy_t * phy, son_to_json_callback_t callback, void * context, const char * str);
+
+static void phy_fprintf(son_phy_t * phy, son_to_json_callback_t callback, void * context, const char * format, ...);
+static void print_indent(int indent, son_phy_t * phy, son_to_json_callback_t callback, void * context);
+static void to_json_recursive(son_t * h,
+		son_size_t last_pos,
+		int indent,
+		int is_array,
+		son_phy_t * phy,
+		son_to_json_callback_t callback,
+		void * context);
 
 static int open_from_phy(son_t * h);
 static int create_from_phy(son_t * h, son_stack_t * stack, size_t stack_size);
@@ -43,7 +51,7 @@ int son_get_error(son_t * h){
 	return err;
 }
 
-int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
+int son_append(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size){
 	son_store_t store;
 	int ret = 0;
 
@@ -83,7 +91,7 @@ int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
 	return ret;
 }
 
-int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, size_t stack_size){
+int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size){
 	if( son_phy_open_message(&(h->phy), message, nbyte) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
@@ -92,7 +100,7 @@ int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack
 	return create_from_phy(h, stack, stack_size);
 }
 
-int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size){
+int son_create(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size){
 	if( son_phy_open(&(h->phy), name, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
 		h->err = SON_ERR_OPEN_IO;
 		return -1;
@@ -154,7 +162,7 @@ int son_seek(son_t * h, const char * access, son_size_t * data_size){
 	return ret;
 }
 
-int son_seek_next(son_t * h, int child_or_sibling, char * name, son_value_t * type){
+int son_seek_next(son_t * h, char * name, son_value_t * type){
 	son_store_t store;
 	u32 next;
 	int ret = 0;
@@ -188,7 +196,7 @@ int son_seek_next(son_t * h, int child_or_sibling, char * name, son_value_t * ty
 	return ret;
 }
 
-int son_to_json(son_t * h, const char * path){
+int son_to_json(son_t * h, const char * path, int (*callback)(void*, const char *), void * context){
 	int is_array;
 	son_store_t store;
 	son_phy_t phy;
@@ -214,16 +222,24 @@ int son_to_json(son_t * h, const char * path){
 	}
 
 	//create a new file
-	if( son_phy_open(&phy, path, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
-		h->err = SON_ERR_OPEN_IO;
-		return -1;
+	if( path != 0 ){
+		if( son_phy_open(&phy, path, SON_O_CREAT | SON_O_RDWR | SON_O_TRUNC, 0666) < 0 ){
+			h->err = SON_ERR_OPEN_IO;
+			return -1;
+		}
+
+		phy_fprintf(&phy, callback, context, "{\n");
+		to_json_recursive(h, son_local_store_next(&store), 1, is_array, &phy, callback, context);
+		phy_fprintf(&phy, callback, context, "}\n");
+
+		return son_phy_close(&phy);
+	} else {
+		phy_fprintf(0, callback, context, "{\n");
+		to_json_recursive(h, son_local_store_next(&store), 1, is_array, 0, callback, context);
+		phy_fprintf(0, callback, context, "}\n");
 	}
 
-	phy_fprintf(&phy, "{\n");
-	to_json_recursive(h, son_local_store_next(&store), 1, is_array, &phy);
-	phy_fprintf(&phy, "}\n");
-
-	return son_phy_close(&phy);
+	return 0;
 }
 
 void son_local_assign_checksum(son_t * h){
@@ -502,18 +518,35 @@ int son_local_store_seek(son_t * h, const char * access, son_store_t * son, son_
 	return 0;
 }
 
-void print_indent(int indent, son_phy_t * phy){
+void print_indent(int indent, son_phy_t * phy, son_to_json_callback_t callback, void * context){
 	int i;
-	for(i=0; i < indent; i++){ phy_fprintf(phy, "\t"); }
+	for(i=0; i < indent; i++){ phy_fputs(phy, callback, context, " "); }
 }
 
-void phy_fprintf(son_phy_t * phy, const char * format, ...){
-	char buffer[256];
+void phy_fputs(son_phy_t * phy, son_to_json_callback_t callback, void * context, const char * str){
+	if( phy != 0 ){
+		son_phy_write(phy, str, strlen(str));
+	}
+
+	if( callback != 0 ){
+		callback(context, str);
+	}
+}
+
+void phy_fprintf(son_phy_t * phy, son_to_json_callback_t callback, void * context, const char * format, ...){
+	char buffer[128];
 	va_list args;
 	va_start (args, format);
-	vsnprintf(buffer, 256, format, args);
+	vsnprintf(buffer, 128, format, args);
 	va_end (args);
-	son_phy_write(phy, buffer, strnlen(buffer, 256));
+
+	if( phy != 0 ){
+		son_phy_write(phy, buffer, strnlen(buffer, 128));
+	}
+
+	if( callback != 0 ){
+		callback(context, buffer);
+	}
 }
 
 int son_local_phy_lseek_current(son_t * h, s32 offset){
@@ -534,102 +567,107 @@ int son_local_phy_lseek_set(son_t * h, s32 offset){
 	return ret;
 }
 
-void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array, son_phy_t * phy){
+void to_json_recursive(son_t * h,
+		son_size_t last_pos,
+		int indent,
+		int is_array,
+		son_phy_t * phy,
+		son_to_json_callback_t callback,
+		void * context){
 	son_store_t store;
 	son_size_t data_size;
 	son_size_t pos;
+	son_size_t next;
 	u8 type;
 
 
 	while( son_local_store_read(h, &store) > 0 ){
 
 		pos = son_local_phy_lseek_current(h, 0);
-
-		data_size = son_local_store_next(&store) - pos;
+		next = son_local_store_next(&store);
+		data_size = next - pos;
 		type = son_local_store_type(&store);
 
-
-		print_indent(indent, phy);
+		print_indent(indent, phy, callback, context);
 		if( type == SON_OBJ ){
-			if( is_array ){
-				phy_fprintf(phy, "{\n");
-			} else {
-				phy_fprintf(phy, "\"%s\" : {\n", store.key.name);
-			}
-			to_json_recursive(h, son_local_store_next(&store), indent+1, 0, phy);
-			print_indent(indent, phy);
-			phy_fprintf(phy, "}");
-			//add a comma?
-			if( son_local_store_next(&store) != last_pos ){
-				phy_fprintf(phy, ",");
-			}
 
-			phy_fprintf(phy, "\n");
+			if( is_array ){
+				phy_fputs(phy, callback, context, "{\n");
+			} else {
+				phy_fprintf(phy, callback, context, "\"%s\" : {\n", store.key.name);
+			}
+			if( data_size > 0 ){
+				to_json_recursive(h, next, indent+1, 0, phy, callback, context);
+			}
+			print_indent(indent, phy, callback, context);
+			phy_fputs(phy, callback, context, "}");
+
 		} else if( type == SON_ARRAY ){
-			if( is_array ){
-				phy_fprintf(phy, "[\n");
-			} else {
-				phy_fprintf(phy, "\"%s\" : [\n", store.key.name);
-			}
-			to_json_recursive(h, son_local_store_next(&store), indent+1, 1, phy);
-			print_indent(indent, phy);
-			phy_fprintf(phy, "]");
-			//add a comma?
-			if( son_local_store_next(&store) != last_pos ){
-				phy_fprintf(phy, ",");
-			}
 
-			phy_fprintf(phy, "\n");
+			if( is_array ){
+				phy_fputs(phy, callback, context, "[\n");
+			} else {
+				phy_fprintf(phy, callback, context, "\"%s\" : [\n", store.key.name);
+			}
+			if( data_size > 0 ){
+				to_json_recursive(h, next, indent+1, 1, phy, callback, context);
+			}
+			print_indent(indent, phy, callback, context);
+			phy_fputs(phy, callback, context, "]");
 
 		} else {
 			char buffer[data_size+1];
 			buffer[data_size] = 0;
 			son_phy_read(&(h->phy), buffer, data_size);
 
+
 			if( is_array == 0 ){
-				phy_fprintf(phy, "\"%s\" : ", store.key.name);
+				phy_fprintf(phy, callback, context, "\"%s\" : ", store.key.name);
 			}
 
 			if( type == SON_STRING ){
-				phy_fprintf(phy, "\"%s\"", buffer);
+				phy_fputs(phy, callback, context, "\"");
+				phy_fputs(phy, callback, context, buffer);
+				phy_fputs(phy, callback, context, "\"");
 			} else if ( type == SON_FLOAT ){
 				float * value = (float*)buffer;
-				phy_fprintf(phy, "%f", *value);
+				phy_fprintf(phy, callback, context, "%f", *value);
 			} else if ( type == SON_NUMBER_U32 ){
 				u32 * value = (u32*)buffer;
 #if !defined __StratifyOS__
-				phy_fprintf(phy, "%d", *value);
+				phy_fprintf(phy, callback, context, "%d", *value);
 #else
-				phy_fprintf(phy, "%ld", *value);
+				phy_fprintf(phy, callback, context, "%ld", *value);
 #endif
 			} else if ( type == SON_NUMBER_S32 ){
 				s32 * value = (s32*)buffer;
 #if !defined __StratifyOS__
-				phy_fprintf(phy, "%d", *value);
+				phy_fprintf(phy, callback, context, "%d", *value);
 #else
-				phy_fprintf(phy, "%ld", *value);
+				phy_fprintf(phy, callback, context, "%ld", *value);
 #endif
 			} else if ( type == SON_TRUE ){
-				phy_fprintf(phy, "true");
+				phy_fputs(phy, callback, context, "true");
 			} else if ( type == SON_FALSE ){
-				phy_fprintf(phy, "false");
+				phy_fputs(phy, callback, context, "false");
 			} else if ( type == SON_NULL ){
-				phy_fprintf(phy, "null");
+				phy_fputs(phy, callback, context, "null");
 			} else if ( type == SON_DATA ){
 				//write base64 encoded data
 				int encoded_size = base64_calc_encoded_size(data_size);
 				char dest[encoded_size+1]; //add a byte for the zero terminator
 				base64_encode(dest, buffer, data_size);
-				phy_fprintf(phy, "\"%s\"", dest);
+				phy_fputs(phy, callback, context, "\"");
+				phy_fputs(phy, callback, context, dest);
+				phy_fputs(phy, callback, context, "\"");
 			}
-
-			if( son_local_store_next(&store) != last_pos ){
-				phy_fprintf(phy, ",");
-			}
-			phy_fprintf(phy, "\n");
 		}
 
-		if( son_local_store_next(&store) == last_pos ){
+		//add a comma?
+		if( next != last_pos ){
+			phy_fprintf(phy, callback, context, ",\n");
+		} else {
+			phy_fprintf(phy, callback, context, "\n");
 			return;
 		}
 	}
