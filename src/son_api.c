@@ -44,7 +44,8 @@ const son_api_t m_son_api = {
 		.edit_bool = son_edit_bool,
 		.send_message = son_send_message,
 		.recv_message = son_recv_message,
-		.get_message_size = son_get_message_size
+		.get_message_size = son_get_message_size,
+		.seek_next = son_seek_next
 };
 
 const son_api_t * son_api(){ return &m_son_api; }

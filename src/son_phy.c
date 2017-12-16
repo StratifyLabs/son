@@ -85,9 +85,18 @@ int phy_close_message(son_phy_t * phy){
 #if !defined __StratifyOS__
 
 #include <stdio.h>
+#if defined __win32 || defined __win64
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 void son_phy_msleep(int ms){
+#if defined __win32 || defined __win64
+	Sleep(msec);
+#else
 	usleep(ms*1000);
+#endif
 }
 
 void son_phy_set_driver(son_phy_t * phy, void * driver){

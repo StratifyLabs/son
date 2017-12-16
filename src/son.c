@@ -154,17 +154,49 @@ int son_seek(son_t * h, const char * access, son_size_t * data_size){
 	return ret;
 }
 
+int son_seek_next(son_t * h, int child_or_sibling, char * name, son_value_t * type){
+	son_store_t store;
+	u32 next;
+	int ret = 0;
+	int current;
+	u8 tmp;
+
+	if( son_local_verify_checksum(h) < 0 ){
+		return 0;
+	}
+
+	current = son_local_phy_lseek_current(h, 0);
+	if( son_local_store_read(h, &store) > 0 ){
+		tmp = son_local_store_type(&store);
+		if( type ){ *type = tmp; }
+
+		//copy the name of the current object
+		if( strncmp("$", (const char *)store.key.name, SON_KEY_NAME_SIZE) == 0 ){
+			name[0] = 0; //empty string for root
+		} else {
+			strncpy(name, (const char *)store.key.name, SON_KEY_NAME_SIZE);
+		}
+
+		//The file needs to seek to the next sibling so the next call works
+		next = son_local_store_next(&store);
+		son_local_phy_lseek_set(h, next);
+		ret = next - current; //size of the advance
+
+	}
+
+	son_local_assign_checksum(h);
+	return ret;
+}
+
 int son_to_json(son_t * h, const char * path){
 	int is_array;
 	son_store_t store;
 	son_phy_t phy;
+	u8 type;
 
 
 	memset(&phy, 0, sizeof(phy));
-
 	son_local_phy_lseek_set(h, sizeof(son_hdr_t));
-
-	u8 type;
 
 	if( son_local_store_read(h, &store) <= 0 ){
 		return -1;
@@ -604,43 +636,43 @@ void to_json_recursive(son_t * h, son_size_t last_pos, int indent, int is_array,
 }
 
 int base64_encode(char * dest, const void * src, int nbyte){
-    int i;
-    int j;
-    int k;
-    int len;
-    uint8_t six_bits[4];
-    len = nbyte;
-    const char * data;
-    data = (const char *)src;
+	int i;
+	int j;
+	int k;
+	int len;
+	uint8_t six_bits[4];
+	len = nbyte;
+	const char * data;
+	data = (const char *)src;
 
-    k = 0;
-    //We need to encode three bytes at a time in to four encoded bytes
-    for(i=0; i < len; i+=3){
-            //First the thress bytes are broken down into six-bit sections
-            six_bits[0] = (data[i] >> 2) & 0x3F;
-            six_bits[1] = ((data[i] << 4) & 0x30) + ((data[i+1]>>4) & 0x0F);
-            six_bits[2] = ((data[i+1] << 2) & 0x3C) + ((data[i+2]>>6) & 0x03);
-            six_bits[3] = data[i+2] & 0x3F;
-            //now we use the helper function to convert from six-bits to base64
-            for(j=0; j < 4; j++){
-                    dest[k+j] = base64_encode_six(six_bits[j]);
-            }
-            k+=4;
-    }
+	k = 0;
+	//We need to encode three bytes at a time in to four encoded bytes
+	for(i=0; i < len; i+=3){
+		//First the thress bytes are broken down into six-bit sections
+		six_bits[0] = (data[i] >> 2) & 0x3F;
+		six_bits[1] = ((data[i] << 4) & 0x30) + ((data[i+1]>>4) & 0x0F);
+		six_bits[2] = ((data[i+1] << 2) & 0x3C) + ((data[i+2]>>6) & 0x03);
+		six_bits[3] = data[i+2] & 0x3F;
+		//now we use the helper function to convert from six-bits to base64
+		for(j=0; j < 4; j++){
+			dest[k+j] = base64_encode_six(six_bits[j]);
+		}
+		k+=4;
+	}
 
-    //at the end, we add = if the input is not divisible by 3
-    if( (len % 3) == 1 ){
-            //two equals at end
-            dest[k-2] = '=';
-            dest[k-1] = '=';
-    } else if ( (len %3 ) == 2 ){
-            dest[k-1] = '=';
-    }
+	//at the end, we add = if the input is not divisible by 3
+	if( (len % 3) == 1 ){
+		//two equals at end
+		dest[k-2] = '=';
+		dest[k-1] = '=';
+	} else if ( (len %3 ) == 2 ){
+		dest[k-1] = '=';
+	}
 
-    //finally, zero terminate the output string
-    dest[k] = 0;
+	//finally, zero terminate the output string
+	dest[k] = 0;
 
-    return strlen(dest);
+	return strlen(dest);
 }
 
 int base64_calc_encoded_size(int nbyte){
@@ -649,19 +681,19 @@ int base64_calc_encoded_size(int nbyte){
 
 //This is a helper function to convert a six-bit value to base64
 char base64_encode_six(uint8_t six_bit_value){
-        uint8_t x;
-        char c = -1;
-        x = six_bit_value & ~0xC0; //remove top two bits (should be zero anyway)
-        if( x < 26 ){
-                c = 'A' + x;
-        } else if ( x < 52 ){
-                c = 'a' + (x - 26);
-        } else if( x < 62 ){
-                c = '0' + (x - 52);
-        } else if( x == 62 ){
-                c = '+';
-        } else if (x == 63 ){
-                c = '/';
-        }
-        return c;
+	uint8_t x;
+	char c = -1;
+	x = six_bit_value & ~0xC0; //remove top two bits (should be zero anyway)
+	if( x < 26 ){
+		c = 'A' + x;
+	} else if ( x < 52 ){
+		c = 'a' + (x - 26);
+	} else if( x < 62 ){
+		c = '0' + (x - 52);
+	} else if( x == 62 ){
+		c = '+';
+	} else if (x == 63 ){
+		c = '/';
+	}
+	return c;
 }

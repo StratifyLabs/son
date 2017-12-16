@@ -112,7 +112,8 @@ typedef enum {
 	SON_ERR_MESSAGE_TIMEOUT /*! 20: This happens when there is a timeout when sending or receiving a message. */,
 	SON_ERR_MESSAGE_IO /*! 21: This happens when there is an error trying to read or write the message to a device or file. */,
 	SON_ERR_NO_MESSAGE /*! 22: This happens when trying to send/receive a message using a handle that is not associated with a message. */,
-	SON_ERR_INCOMPLETE_MESSAGE /*! 23: This happens when trying to send a message or get the size of the message when it is will open for editing/writing. */
+	SON_ERR_INCOMPLETE_MESSAGE /*! 23: This happens when trying to send a message or get the size of the message when it is will open for editing/writing. */,
+	SON_ERR_NO_CHILDREN /*! 24: This happens when seeking the next children if the type is not an object or array. */
 } son_err_t;
 
 #define SON_STR_VERSION "0.3"
@@ -143,13 +144,15 @@ typedef enum {
 	SON_NUMBER_U32 /*! Unsigned 32-bit value (Internal use only) */,
 	SON_NUMBER_S32 /*! Signed 32-bit value (Internal use only) */,
 	SON_DATA /*! Data (user-defined size) (Internal use only) */,
-	SON_OBJ /*! Object (Internal use only) */,
+	SON_OBJECT /*! Object (Internal use only) */,
 	SON_ARRAY /*! Array (Internal use only) */, //can be an array of distinct objects
 	SON_TRUE /*! True value (Internal use only) */,
 	SON_FALSE /*! False value (Internal use only) */,
 	SON_NULL /*! Null value (Internal use only) */,
 	SON_TOTAL
 } son_value_t;
+
+#define SON_OBJ SON_OBJECT
 
 /*! \details Defines the stack used when
  * creating and appending files.
@@ -651,6 +654,24 @@ int son_write_open_data(son_t * h, const void * data, son_size_t size);
  */
 int son_seek(son_t * h, const char * access, son_size_t * size);
 
+enum {
+	SON_SEEK_NEXT_SIBLING /*! Seek for the next sibling */,
+	SON_SEEK_NEXT_CHILD /*! Seek for the first child */
+};
+
+/*! \details Seeks the next key in the file and copies it to name.
+ *
+ * @param h The handle
+ * @param child_sibling Set to zero to scan for sibling and non-zero to scan for children
+ * @param name A pointer to the destination memory (should have SON_KEY_NAME_CAPACITY bytes)
+ * @param size A pointer to variable to store the size
+ * @return Zero on success
+ *
+ *
+ *
+ */
+int son_seek_next(son_t * h, int child_or_sibling, char * name, son_value_t * type);
+
 /*! \details Reads the value specified by \a access as a string value.
  *
  * @param h A pointer to the handler
@@ -881,6 +902,7 @@ typedef struct MCU_PACK {
 	int (*send_message)(son_t * h, int fd, int timeout);
 	int (*recv_message)(son_t * h, int fd, int timeout);
 	int (*get_message_size)(son_t * h);
+	int (*seek_next)(son_t * h, int child_or_sibling, char * name, son_value_t * type);
 } son_api_t;
 
 const son_api_t * son_api();
