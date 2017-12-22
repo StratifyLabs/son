@@ -175,9 +175,8 @@ int son_phy_read_fileno(son_phy_t * phy, int fd, void * buffer, u32 nbyte){
 	if( phy->driver ){
 		return link_read(phy->driver, fd, buffer, nbyte);
 	}
-#else
-	return -1;
 #endif
+	return -1;
 }
 
 int son_phy_write_fileno(son_phy_t * phy, int fd, const void * buffer, u32 nbyte){
@@ -185,9 +184,8 @@ int son_phy_write_fileno(son_phy_t * phy, int fd, const void * buffer, u32 nbyte
 	if( phy->driver ){
 		return link_write(phy->driver, fd, buffer, nbyte);
 	}
-#else
-	return -1;
 #endif
+	return -1;
 }
 
 int son_phy_lseek(son_phy_t * phy, int32_t offset, int whence){

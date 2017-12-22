@@ -220,7 +220,7 @@ extern "C" {
  *
  * fd = open("/dev/uart0", O_RDWR | O_NONBLOCK);
  *
- * son_read_message(&handle, buffer, 512);
+ * son_open_message(&handle, buffer, 512);
  * son_send_message(&handle, fd, 1000); //send the message on the UART
  * \endcode
  *

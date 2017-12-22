@@ -1,15 +1,36 @@
 /*! \file */ //Copyright 2011-2017 Tyler Gilbert; All Rights Reserved
 
-#if defined __StratifyOS__
-#include <cortexm/cortexm.h>
-#else
-#define cortexm_assign_zero_sum32(x,y)
-#define cortexm_verify_zero_sum32(x,y) 1
-#endif
+
 
 #include <errno.h>
 
 #include "son_local.h"
+
+#if defined __StratifyOS__
+#include <cortexm/cortexm.h>
+#else
+#define CORTEXM_ZERO_SUM32_COUNT(x) (sizeof(x)/sizeof(u32))
+
+void cortexm_assign_zero_sum32(void * data, int count){
+	u32 sum = 0;
+	u32 * ptr = data;
+	int i;
+	for(i=0; i < count-1; i++){
+		sum += ptr[i];
+	}
+	ptr[i] = (u32)(0 - sum);
+}
+
+int cortexm_verify_zero_sum32(void * data, int count){
+	u32 sum = 0;
+	u32 * ptr = data;
+	int i;
+	for(i=0; i < count; i++){
+		sum += ptr[i];
+	}
+	return sum == 0;
+}
+#endif
 
 enum {
 	SON_MESSAGE_START = 0x01234567
@@ -47,7 +68,6 @@ int son_send_message(son_t * h, int fd, int timeout){
 	son_message_t msg;
 	int nbytes;
 
-
 	if( son_is_message(h) < 0 ){ return -1; }
 
 	nbytes = son_get_message_size(h);
@@ -62,14 +82,16 @@ int son_send_message(son_t * h, int fd, int timeout){
 
 		if( son_message_transfer_data(h, fd, &msg, sizeof(msg), timeout, (son_transfer_t)son_phy_write_fileno) < 0 ){
 			//h->err is set by son_message_transfer_data()
-			return -1;
-		}
-
-		if( son_message_transfer_data(h, fd, h->phy.message, msg.size, timeout, (son_transfer_t)son_phy_write_fileno) < 0 ){
-			//h->err is set by son_message_transfer_data()
-			return -1;
+			nbytes = -1;
+		} else {
+			if( son_message_transfer_data(h, fd, h->phy.message, msg.size, timeout, (son_transfer_t)son_phy_write_fileno) < 0 ){
+				//h->err is set by son_message_transfer_data()
+				nbytes = -1;
+			}
 		}
 	}
+	son_local_assign_checksum(h);
+
 	return nbytes;
 }
 
@@ -97,6 +119,8 @@ int son_recv_message(son_t * h, int fd, int timeout){
 			}
 		}
 	}
+	son_local_assign_checksum(h);
+
 	return ret;
 }
 
