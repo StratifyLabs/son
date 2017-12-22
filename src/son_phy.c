@@ -20,11 +20,7 @@ int son_phy_open_message(son_phy_t * phy, void * message, u32 size){
 	if( message ){
 		phy->message = message;
 	} else {
-		phy->fd = -2;
-		phy->message = malloc(size);
-		if( phy->message == 0 ){
-			return -1;
-		}
+		return -1;
 	}
 	phy->message_size = size;
 	return 0;

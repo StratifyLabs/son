@@ -27,11 +27,11 @@ int son_close(son_t * h){
 	return ret;
 }
 
-int son_open_obj(son_t * h, const char * key){
+int son_open_object(son_t * h, const char * key){
 	return write_open_type(h, key, SON_OBJ);
 }
 
-int son_close_obj(son_t * h){
+int son_close_object(son_t * h){
 	return write_close_type(h);
 }
 

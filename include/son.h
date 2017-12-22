@@ -38,19 +38,19 @@
  * 	son_stack_t stack[4];
  * 	son_t h;
  * 	son_create(&h, "/home/data.son", stack, 4);
- * 	son_open_obj(&h, ""); //create the root object
+ * 	son_open_object(&h, ""); //create the root object
  * 	son_write_float(&h, "float0", 0.5);
  * 	son_write_str(&h, "str0", "Hello World");
- * 	son_open_obj(&h, "object0");
+ * 	son_open_object(&h, "object0");
  * 	son_write_num(&h, "number", 1);
- * 	son_close_obj(&h);
+ * 	son_close_object(&h);
  * 	son_open_array(&h, "array0");
  * 	son_write_unum(&h, "0", 10); //inside arrays -- keys don't matter
  * 	son_write_unum(&h, "1", 50);
  * 	son_close_array(&h);
  * 	son_write_true(&h, "bool0");
  * 	son_write_false(&h, "bool1");
- * 	son_close_obj(&h); //close root -- calling this is optional, all objects/arrays will close on son_close()
+ * 	son_close_object(&h); //close root -- calling this is optional, all objects/arrays will close on son_close()
  * 	son_close(&h);
  * }
  * \endcode
@@ -104,7 +104,7 @@ typedef enum {
 	SON_ERR_ARRAY_INDEX_NOT_FOUND /*! 12: This error happens when an array index could not be found */,
 	SON_ERR_ACCESS_TOO_LONG /*! 13: This error happens if the \a access parameter len exceeds \a SON_ACCESS_MAX_USER_SIZE.  */,
 	SON_ERR_KEY_NOT_FOUND /*! 14: This error happens when the key specified by the \a access parameter could not be found. */,
-	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
+	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_object()) exceeds, the handle's stack size. */,
 	SON_ERR_INVALID_KEY /*! 16: This happens if an empty key is passed to anything but the root object. */,
 	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted. */,
 	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type. */,
@@ -274,7 +274,7 @@ int son_edit_message(son_t * h, void * message, int nbyte);
  * son_stack_t stack[4];
  * char buffer[256];
  * son_create_message(&handle, buffer, 256, stack, 4);
- * son_open_obj(&handle, ""); //create root as object
+ * son_open_object(&handle, ""); //create root as object
  * son_write_str(&handle, "first", "John");
  * son_write_str(&handle, "last", "Doe");
  * son_close(&handle);
@@ -366,11 +366,11 @@ typedef int (*son_to_json_callback_t)(void*, const char*);
  * son_t h;
  * son_stack_t stack[4];
  * son_create(&h, "/home/data.son", stack, 4);
- * son_open_obj(&h, ""); //open the root object
- * son_open_obj(&h, "make");
- * son_open_obj(&h, "model");
+ * son_open_object(&h, ""); //open the root object
+ * son_open_object(&h, "make");
+ * son_open_object(&h, "model");
  * son_write_str(&h, "color", "red");
- * son_close(&h); //this will close each obj (son_close_obj()) when closing the file
+ * son_close(&h); //this will close each obj (son_close_object()) when closing the file
  *  //then to access the value
  * char color[16];
  * son_open(&h, "/home/data.son");
@@ -450,18 +450,18 @@ int son_close(son_t * h);
  * \sa son_create()
  *
  */
-int son_open_obj(son_t * h, const char * key);
+int son_open_object(son_t * h, const char * key);
 
 /*! \details Closes an object while creating or appending a
  * SON file.
  *
  * @param h A pointer to the handle
  *
- * The function son_close_obj() is used to close the object.
+ * The function son_close_object() is used to close the object.
  *
- * \sa son_create(), son_close_obj()
+ * \sa son_create(), son_close_object()
  */
-int son_close_obj(son_t * h);
+int son_close_object(son_t * h);
 
 /*! \details Opens a new array while creating or appending a SON file.
  *
@@ -867,8 +867,8 @@ typedef struct MCU_PACK {
 	int (*open_message)(son_t * h, void * message, int nbyte);
 	int (*close)(son_t * h);
 	int (*to_json)(son_t * h, const char * path, int (*callback)(void * context, const char * entry), void * context);
-	int (*open_obj)(son_t * h, const char * key);
-	int (*close_obj)(son_t * h);
+	int (*open_object)(son_t * h, const char * key);
+	int (*close_object)(son_t * h);
 	int (*open_array)(son_t * h, const char * key);
 	int (*close_array)(son_t * h);
 	int (*open_data)(son_t * h, const char * key);
