@@ -4,12 +4,21 @@
 
 #include <errno.h>
 
+#include <sos/dev/cfifo.h>
+
 #include "son_local.h"
 
 #if defined __StratifyOS__
 #include <cortexm/cortexm.h>
-#else
+#define error_number errno
+#define ERROR_AGAIN EAGAIN
+#define COUNT_MULT 1
+#elif defined __link
 #define CORTEXM_ZERO_SUM32_COUNT(x) (sizeof(x)/sizeof(u32))
+
+#define error_number link_errno
+#define ERROR_AGAIN 11
+#define COUNT_MULT 50
 
 void cortexm_assign_zero_sum32(void * data, int count){
 	u32 sum = 0;
@@ -129,17 +138,19 @@ int son_message_transfer_data(son_t * h, int fd, void *  data, int nbytes, int t
 	int bytes = 0;
 	int count = 0;
 	do {
-		errno = 0;
+		error_number = 0;
 		ret = transfer(&(h->phy), fd, data + bytes, nbytes - bytes);
 		if( ret < 0 ){
-			if( errno == EAGAIN ){
-				son_phy_msleep(1);
+			if( error_number == ERROR_AGAIN ){
+				son_phy_msleep(COUNT_MULT);
 				count++;
-				if( count == timeout ){
+				if( count*COUNT_MULT >= timeout ){
 					h->err = SON_ERR_MESSAGE_TIMEOUT;
 					return -1;
 				}
 			} else {
+				printf("Error is %d\n", error_number);
+				fflush(stdout);
 				h->err = SON_ERR_MESSAGE_IO;
 				return -1;
 			}
@@ -167,7 +178,7 @@ int son_message_recv_start(son_t * h, int fd, int timeout){
 	u8 start;
 	i = 0;
 	do {
-		if( son_message_transfer_data(h, fd, &c, 1, timeout, (son_transfer_t)son_phy_read_fileno) < 0 ){
+		if( son_message_transfer_data(h, fd, &c, 1, 0, (son_transfer_t)son_phy_read_fileno) < 0 ){
 			return 0;
 		}
 		start = ((SON_MESSAGE_START >> (i*8)) & 0xff);

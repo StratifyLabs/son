@@ -23,7 +23,7 @@
 					<stringMacro name="CC" type="VALUE_TEXT" value="${CC_${OsType}}"/>
 					<stringMacro name="POSTPROCESS" type="VALUE_TEXT" value="${POSTPROCESS_${OsType}}"/>
 					<stringMacro name="TOOLSPATH_win64" type="VALUE_TEXT" value="${TOOLSPATH_win32}"/>
-					<stringMacro name="BUILD_TYPE" type="VALUE_TEXT" value="link"/>
+					<stringMacro name="BUILD_TYPE" type="VALUE_TEXT" value="_link"/>
 					<stringMacro name="CC_macosx" type="VALUE_TEXT" value="clang ${CCFLAGS_macosx}"/>
 					<stringMacro name="RM_win64" type="VALUE_TEXT" value="${RM_win32}"/>
 					<stringMacro name="TOOLSPATH_linux" type="VALUE_TEXT" value="${TOOLSPATH_macosx}"/>
@@ -75,6 +75,7 @@
 									<listOptionValue builtIn="false" value="&quot;${INSTALLPATH}/include&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.381601933" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__link"/>
 									<listOptionValue builtIn="false" value="__${BUILD_NAME}"/>
 									<listOptionValue builtIn="false" value="__${BUILD_TYPE}"/>
 									<listOptionValue builtIn="false" value="__${BUILD_DEVICE}"/>
