@@ -13,10 +13,15 @@
 #define error_number errno
 #define ERROR_AGAIN EAGAIN
 #define COUNT_MULT 1
-#elif defined __link
+#else
 #define CORTEXM_ZERO_SUM32_COUNT(x) (sizeof(x)/sizeof(u32))
 
+#if defined __link
 #define error_number link_errno
+#else
+#define error_number errno
+#endif
+
 #define ERROR_AGAIN 11
 #define COUNT_MULT 50
 
@@ -149,8 +154,6 @@ int son_message_transfer_data(son_t * h, int fd, void *  data, int nbytes, int t
 					return -1;
 				}
 			} else {
-				printf("Error is %d\n", error_number);
-				fflush(stdout);
 				h->err = SON_ERR_MESSAGE_IO;
 				return -1;
 			}

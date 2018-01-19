@@ -169,9 +169,7 @@ int son_seek_next(son_t * h, char * name, son_value_t * type){
 	int current;
 	u8 tmp;
 
-	if( son_local_verify_checksum(h) < 0 ){
-		return 0;
-	}
+	if( son_local_verify_checksum(h) < 0 ){ return 0; }
 
 	current = son_local_phy_lseek_current(h, 0);
 	if( son_local_store_read(h, &store) > 0 ){
@@ -295,7 +293,7 @@ void store_set_checksum(son_store_t * store){
 	for(i=0; i < (sizeof(son_store_t)/sizeof(u32)); i++){
 		other_sum += p[i];
 	}
-	store->checksum = -1*other_sum;
+	store->checksum = ~other_sum+1;
 }
 
 u32 son_local_store_calc_checksum(son_store_t * store){
@@ -305,6 +303,7 @@ u32 son_local_store_calc_checksum(son_store_t * store){
 	for(i=0; i < (sizeof(son_store_t)/sizeof(u32)); i++){
 		checksum += p[i];
 	}
+
 	return checksum;
 }
 
