@@ -15,3 +15,5 @@
 /build_release/
 
 *.user
+cmake_*
+build_*
