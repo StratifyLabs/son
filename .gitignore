@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /build_debug_app_armv7em_fpu/
 /build_release_app_armv7m/
 /build_release_app_armv7em_fpu/
@@ -17,3 +18,24 @@
 *.user
 /build_kernel_armv7em_fpu/
 /build_kernel_armv7m/
+=======
+/build_debug_app_armv7em_fpu/
+/build_release_app_armv7m/
+/build_release_app_armv7em_fpu/
+/build_debug_son_armv7em_fpu/
+/build_debug_son_armv7m/
+/build_release_mg_armv7em_fpu/
+/build_release_mg_armv7m/
+/build_release_son_armv7em_fpu/
+/build_release_son_armv7m/
+/build_release_link/
+/build_release_armv7m/
+/build_release_armv7em_fpu/
+/build_debug_armv7m/
+/build_debug_armv7em_fpu/
+/build_release/
+
+*.user
+cmake_*
+build_*
+>>>>>>> 840492427fdc2bcad07d48aa2efb377015e00e44

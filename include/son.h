@@ -38,19 +38,19 @@
  * 	son_stack_t stack[4];
  * 	son_t h;
  * 	son_create(&h, "/home/data.son", stack, 4);
- * 	son_open_obj(&h, ""); //create the root object
+ * 	son_open_object(&h, ""); //create the root object
  * 	son_write_float(&h, "float0", 0.5);
  * 	son_write_str(&h, "str0", "Hello World");
- * 	son_open_obj(&h, "object0");
+ * 	son_open_object(&h, "object0");
  * 	son_write_num(&h, "number", 1);
- * 	son_close_obj(&h);
+ * 	son_close_object(&h);
  * 	son_open_array(&h, "array0");
  * 	son_write_unum(&h, "0", 10); //inside arrays -- keys don't matter
  * 	son_write_unum(&h, "1", 50);
  * 	son_close_array(&h);
  * 	son_write_true(&h, "bool0");
  * 	son_write_false(&h, "bool1");
- * 	son_close_obj(&h); //close root -- calling this is optional, all objects/arrays will close on son_close()
+ * 	son_close_object(&h); //close root -- calling this is optional, all objects/arrays will close on son_close()
  * 	son_close(&h);
  * }
  * \endcode
@@ -84,15 +84,48 @@
  * @{
  */
 
-#define SON_STR_VERSION "0.0.2"
-#define SON_VERSION 0x0002
+/*! \brief See below for details.
+ * \details These are the values returned by son_get_error(). The
+ * value is set when a son_* function does not complete successfully.
+ */
+typedef enum {
+	SON_ERR_NONE /*! 0: This value indicates no error has occurred. */,
+	SON_ERR_NO_ROOT /*! 1: This error happens when a top level object or array is not created. */,
+	SON_ERR_OPEN_IO /*! 2: This error happens if there is an IO failure to create or open a file (run perror() for more info). */,
+	SON_ERR_READ_IO /*! 3: This error happens when an IO read operation fails (run perror() for more info). */,
+	SON_ERR_WRITE_IO /*! 4: This error happens when an IO write operation fails (run perror() for more info). */,
+	SON_ERR_CLOSE_IO /*! 5: This error happens when an IO close operation fails (run perror() for more info). */,
+	SON_ERR_SEEK_IO /*! 6: This error happens when an IO seek operation fails (run perror() for more info). */,
+	SON_ERR_READ_CHECKSUM /*! 7: This error happens when the data in the file has a invalid checksum which indicates a corrupted file or bad file format. */,
+	SON_ERR_CANNOT_APPEND /*! 8: This error happens when an append is attempted on a file that has not been opened for appending */,
+	SON_ERR_CANNOT_WRITE /*! 9: This error happens if a write is attempted on a file that has been opened for reading */,
+	SON_ERR_CANNOT_READ /*! 10: This error happens if a read is attempted on a file that has been opened for writing or appending */,
+	SON_ERR_INVALID_ROOT /*! 11: This error happens when the root object is not valid (usually a bad file format or corrupted file). */,
+	SON_ERR_ARRAY_INDEX_NOT_FOUND /*! 12: This error happens when an array index could not be found */,
+	SON_ERR_ACCESS_TOO_LONG /*! 13: This error happens if the \a access parameter len exceeds \a SON_ACCESS_MAX_USER_SIZE.  */,
+	SON_ERR_KEY_NOT_FOUND /*! 14: This error happens when the key specified by the \a access parameter could not be found. */,
+	SON_ERR_STACK_OVERFLOW /*! 15: This error happens if the depth (son_open_array() or son_open_object()) exceeds, the handle's stack size. */,
+	SON_ERR_INVALID_KEY /*! 16: This happens if an empty key is passed to anything but the root object. */,
+	SON_ERR_CANNOT_CONVERT /*! 17: This happens if a read is tried by the base data can't be converted. */,
+	SON_ERR_EDIT_TYPE_MISMATCH /*! 18: This happens if a value is edited with a function that doesn't match the base type. */,
+	SON_ERR_HANDLE_CHECKSUM /*! 19: This happens if the handle is modified outside of a call to the SON library. */,
+	SON_ERR_MESSAGE_TIMEOUT /*! 20: This happens when there is a timeout when sending or receiving a message. */,
+	SON_ERR_MESSAGE_IO /*! 21: This happens when there is an error trying to read or write the message to a device or file. */,
+	SON_ERR_NO_MESSAGE /*! 22: This happens when trying to send/receive a message using a handle that is not associated with a message. */,
+	SON_ERR_INCOMPLETE_MESSAGE /*! 23: This happens when trying to send a message or get the size of the message when it is will open for editing/writing. */,
+	SON_ERR_NO_CHILDREN /*! 24: This happens when seeking the next children if the type is not an object or array. */
+} son_err_t;
+
+#define SON_STR_VERSION "0.3"
+#define SON_VERSION 0x0003
 #include "son_phy.h"
 
 /*! \brief SON Size Type */
 typedef u32 son_size_t;
 
-/*! \details Defines the maximum length of any given key
- * value.
+/*! \brief Defines the maximum length of any given key
+ * value. Values that exceed this length will
+ * be truncated.
  *
  * \showinitializer
  */
@@ -111,7 +144,7 @@ typedef enum {
 	SON_NUMBER_U32 /*! Unsigned 32-bit value (Internal use only) */,
 	SON_NUMBER_S32 /*! Signed 32-bit value (Internal use only) */,
 	SON_DATA /*! Data (user-defined size) (Internal use only) */,
-	SON_OBJ /*! Object (Internal use only) */,
+	SON_OBJECT /*! Object (Internal use only) */,
 	SON_ARRAY /*! Array (Internal use only) */, //can be an array of distinct objects
 	SON_TRUE /*! True value (Internal use only) */,
 	SON_FALSE /*! False value (Internal use only) */,
@@ -119,14 +152,7 @@ typedef enum {
 	SON_TOTAL
 } son_value_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-/*! \addtogroup FILES File Handling (Create/Append/Open/Close)
- * @{
- */
+#define SON_OBJ SON_OBJECT
 
 /*! \details Defines the stack used when
  * creating and appending files.
@@ -158,41 +184,132 @@ typedef struct {
  *
  * \sa son_create(), son_append()
  */
-typedef struct {
+typedef struct MCU_PACK {
 	son_phy_t phy /* Internal use only */;
 	son_stack_t * stack /* Internal use only */;
-	size_t stack_size /* Internal use only */;
-	size_t stack_loc /* Internal use only */;
+	u16 stack_size /* Internal use only */;
+	u16 stack_loc /* Internal use only */;
 	u32 err /* Internal use only */;
+#if defined __StratifyOS__
+	u32 checksum;
+#endif
 } son_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/*! \brief See below for details.
- * \details These are the values returned by son_get_error(). The
- * value is set when a son_* function does not complete successfully.
+/*! \addtogroup MESSAGE Messaging
+ *
+ * \details SON Messaging enables storing object notation objects in RAM
+ * as well as sending and receiving the the objects over serial connections
+ * like device FIFOs/SPI/UART, etc. The allows objects to be quickly and
+ * easily shared between processes or over the network.
+ *
+ * Here is an example of creating a message:
+ *
+ * \code
+ * int fd;
+ * son_t handle;
+ * son_stack_t stack[4];
+ * char buffer[512]
+ * son_create_message(&handle, buffer, 512, stack, 4);
+ * son_write_str(&handle, "first", "John");
+ * son_write_str(&handle, "last", "Doe");
+ * son_close(&handle);
+ *
+ * fd = open("/dev/uart0", O_RDWR | O_NONBLOCK);
+ *
+ * son_open_message(&handle, buffer, 512);
+ * son_send_message(&handle, fd, 1000); //send the message on the UART
+ * \endcode
+ *
+ * @{
+ *
  */
-typedef enum {
-	SON_ERR_NONE /*! This value indicates no error has occurred. */,
-	SON_ERR_NO_ROOT /*! This error happens when a top level object or array is not created. */,
-	SON_ERR_OPEN_IO /*! This error happens if there is an IO failure to create or open a file (run perror() for more info). */,
-	SON_ERR_READ_IO /*! This error happens when an IO read operation fails (run perror() for more info). */,
-	SON_ERR_WRITE_IO /*! This error happens when an IO write operation fails (run perror() for more info). */,
-	SON_ERR_CLOSE_IO /*! This error happens when an IO close operation fails (run perror() for more info). */,
-	SON_ERR_SEEK_IO /*! This error happens when an IO seek operation fails (run perror() for more info). */,
-	SON_ERR_READ_CHECKSUM /*! This error happens when the data in the file has a invalid checksum which indicates a corrupted file or bad file format. */,
-	SON_ERR_CANNOT_APPEND /*! This error happens when an append is attempted on a file that has not been saved for appending */,
-	SON_ERR_CANNOT_WRITE /*! This error happens if a write is attempted on a file that has been opened for reading */,
-	SON_ERR_CANNOT_READ /*! This error happens if a read is attempted on a file that has been opened for writing or appending */,
-	SON_ERR_INVALID_ROOT /*! This error happens when the root object is not valid (usually a bad file format or corrupted file). */,
-	SON_ERR_ARRAY_INDEX_NOT_FOUND /*! This error happens when an array index could not be found */,
-	SON_ERR_ACCESS_TOO_LONG /*! This error happens if the \a access parameter len exceeds \a SON_ACCESS_MAX_USER_SIZE.  */,
-	SON_ERR_KEY_NOT_FOUND /*! This error happens when the key specified by the \a access parameter could not be found. */,
-	SON_ERR_STACK_OVERFLOW /*! This error happens if the depth (son_open_array() or son_open_obj()) exceeds, the handle's stack size. */,
-	SON_ERR_INVALID_KEY /*! This happens if an empty key is passed to anything but the root object. */,
-	SON_ERR_CANNOT_CONVERT /*! This happens if a read is tried by the base data can't be converted */,
-	SON_ERR_EDIT_TYPE_MISMATCH /*! This happens if a value is edited with a function that doesn't match the base type */
-} son_err_t;
 
+/*! \details Creates a memory area where SON objects can be stored.
+ *
+ *  @param h A pointer to the handle
+ *  @param message A pointer to the memory message
+ *  @param nbyte The number of bytes in the memory message
+ *  @param stack The SON stack
+ *  @param stack_size The number of entries in the SON stack
+ *
+ *
+ */
+int son_create_message(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size);
+
+/*! \details Opens a memory message for reading.
+ *
+ *  @param h A pointer to the handle
+ *  @param message A pointer to the memory message
+ *  @param nbyte The number of bytes in the memory message
+ *
+ *
+ */
+int son_open_message(son_t * h, void * message, int nbyte);
+
+/*! \details Opens an message for editing.
+ *
+ * @param h A pointer to the handle
+ * @param message A pointer to the memory message
+ * @param nbyte The number of bytes in the message
+ *
+ */
+int son_edit_message(son_t * h, void * message, int nbyte);
+
+/*! \details Sends a message on the specified file descriptor.
+ *
+ * @param h A pointer to the SON handle
+ * @param fd The open file descriptor to write the message to
+ * @param timeout The max milliseconds to block between bytes before aborting
+ * @return The number of bytes sent or less than zero for an error
+ *
+ * To send a message, the handle should be closed for writing and editing.
+ * For example:
+ *
+ * \code
+ * son_t handle;
+ * son_stack_t stack[4];
+ * char buffer[256];
+ * son_create_message(&handle, buffer, 256, stack, 4);
+ * son_open_object(&handle, ""); //create root as object
+ * son_write_str(&handle, "first", "John");
+ * son_write_str(&handle, "last", "Doe");
+ * son_close(&handle);
+ * \endcode
+ *
+ * //the buffer now contains a complete message and is ready to send
+ *
+ */
+int son_send_message(son_t * h, int fd, int timeout);
+
+/*! \details Receives on message on the specified file descriptor.
+ *
+ * @param h A pointer to the SON handle
+ * @param fd The file descriptor to listen to
+ * @param timeout The max milliseconds to block between bytes before aborting
+ * @return The number of bytes successfully received in the message or less than zero for an error
+ *
+ * If the message does not fit in the handle's memory, the message will be truncated.
+ *
+ */
+int son_recv_message(son_t * h, int fd, int timeout);
+
+/*! \details Gets the total size of the message in bytes.
+ *
+ * @param h A pointer to the SON handle
+ * @return The number of bytes in the message or less than zero for an error
+ *
+ */
+int son_get_message_size(son_t * h);
+
+/*! @} */
+
+/*! \addtogroup FILES File Handling (Create/Append/Open/Close)
+ * @{
+ */
 
 #if !defined __StratifyOS__
 void son_set_driver(son_t * h, void * driver);
@@ -213,7 +330,9 @@ int son_get_error(son_t * h);
  * @param path The path to the destination JSON file
  * @return Less than zero for an error
  */
-int son_to_json(son_t * h, const char * path);
+int son_to_json(son_t * h, const char * path, int (*callback)(void * context, const char * entry), void * context);
+
+typedef int (*son_to_json_callback_t)(void*, const char*);
 
 /*! \details Creates a new SON file.
  *
@@ -229,7 +348,7 @@ int son_to_json(son_t * h, const char * path);
  * You also need to provide a stack. This is so the library can work
  * without using dynamic memory allocation. The \a stack_size needs to
  * be as large as the deepest depth of the data. For example, the
- * following JSON data has a depth of 3.
+ * following JSON data has a depth of 4.
  *
  * \code
  * {
@@ -247,11 +366,11 @@ int son_to_json(son_t * h, const char * path);
  * son_t h;
  * son_stack_t stack[4];
  * son_create(&h, "/home/data.son", stack, 4);
- * son_open_obj(&h, ""); //open the root object
- * son_open_obj(&h, "make");
- * son_open_obj(&h, "model");
+ * son_open_object(&h, ""); //open the root object
+ * son_open_object(&h, "make");
+ * son_open_object(&h, "model");
  * son_write_str(&h, "color", "red");
- * son_close(&h); //this will close each obj (son_close_obj()) when closing the file
+ * son_close(&h); //this will close each obj (son_close_object()) when closing the file
  *  //then to access the value
  * char color[16];
  * son_open(&h, "/home/data.son");
@@ -262,7 +381,7 @@ int son_to_json(son_t * h, const char * path);
  * \sa WRITE
  *
  */
-int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+int son_create(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 
 /*! \details Opens a file for appending. Items
  * written to the file will be added to the root object or array.
@@ -278,12 +397,12 @@ int son_create(son_t * h, const char * name, son_stack_t * stack, size_t stack_s
  * son_t son;
  * son_append(&son, "/home/append.son", son_stack, 10);
  * son_write_str(&son, "str", "World"); //this will be appended to the root object or array
- * son_close(&son, 1); //close out all structures -- no more appending
+ * son_close(&son); //close out all structures -- no more appending
  * \endcode
  *
  * \sa  WRITE
  */
-int son_append(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+int son_append(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 
 /*! \details Opens a file for reading.
  *
@@ -321,7 +440,6 @@ int son_close(son_t * h);
  * @{
  */
 
-
 /*! \details Starts a new object while creating
  * or appending values to a SON file.
  *
@@ -332,18 +450,18 @@ int son_close(son_t * h);
  * \sa son_create()
  *
  */
-int son_open_obj(son_t * h, const char * key);
+int son_open_object(son_t * h, const char * key);
 
 /*! \details Closes an object while creating or appending a
  * SON file.
  *
  * @param h A pointer to the handle
  *
- * The function son_close_obj() is used to close the object.
+ * The function son_close_object() is used to close the object.
  *
- * \sa son_create(), son_close_obj()
+ * \sa son_create(), son_close_object()
  */
-int son_close_obj(son_t * h);
+int son_close_object(son_t * h);
 
 /*! \details Opens a new array while creating or appending a SON file.
  *
@@ -538,6 +656,20 @@ int son_write_open_data(son_t * h, const void * data, son_size_t size);
  */
 int son_seek(son_t * h, const char * access, son_size_t * size);
 
+
+/*! \details Seeks the next key in the file and copies it to name.
+ *
+ * @param h The handle
+ * @param child_sibling Set to zero to scan for sibling and non-zero to scan for children
+ * @param name A pointer to the destination memory (should have SON_KEY_NAME_CAPACITY bytes)
+ * @param size A pointer to variable to store the size
+ * @return Zero on success
+ *
+ *
+ *
+ */
+int son_seek_next(son_t * h, char * name, son_value_t * type);
+
 /*! \details Reads the value specified by \a access as a string value.
  *
  * @param h A pointer to the handler
@@ -631,6 +763,10 @@ int son_read_bool(son_t *h, const char * access);
 
 /*! \details Opens a file for editing.
  *
+ * @param h A pointer to the handle
+ * @param name The name of the file to open
+ * @return Less than zero for an error
+ *
  * For variable length data types (SON_DATA and SON_STRING), the data
  * can be modified but the size of the data is fixed. Writing a string
  * that is shorter will work as expected. Writing a string (or data
@@ -640,10 +776,6 @@ int son_read_bool(son_t *h, const char * access);
  * When a value is edited, the value type must match the function
  * used to edit the value (no conversion is performed). An error
  * (SON_ERR_EDIT_TYPE_MISMATCH) will be set if this is attempted.
- *
- * @param h A pointer to the handle
- * @param name The name of the file to open
- * @return Less than zero for an error
  *
  */
 int son_edit(son_t * h, const char * name);
@@ -728,13 +860,15 @@ int son_edit_bool(son_t * h, const char * access, int value);
 typedef struct MCU_PACK {
 	u32 version;
 	int (*get_error)(son_t * h);
-	int (*create)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
-	int (*append)(son_t * h, const char * name, son_stack_t * stack, size_t stack_size);
+	int (*create)(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
+	int (*create_message)(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size);
+	int (*append)(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 	int (*open)(son_t * h, const char * name);
+	int (*open_message)(son_t * h, void * message, int nbyte);
 	int (*close)(son_t * h);
-	int (*to_json)(son_t * h, const char * path);
-	int (*open_obj)(son_t * h, const char * key);
-	int (*close_obj)(son_t * h);
+	int (*to_json)(son_t * h, const char * path, int (*callback)(void * context, const char * entry), void * context);
+	int (*open_object)(son_t * h, const char * key);
+	int (*close_object)(son_t * h);
 	int (*open_array)(son_t * h, const char * key);
 	int (*close_array)(son_t * h);
 	int (*open_data)(son_t * h, const char * key);
@@ -756,12 +890,17 @@ typedef struct MCU_PACK {
 	int (*read_bool)(son_t *h, const char * key);
 	int (*seek)(son_t * h, const char * access, son_size_t * data_size);
 	int (*edit)(son_t * h, const char * name);
+	int (*edit_message)(son_t * h, void * message, int nbyte);
 	int (*edit_float)(son_t * h, const char * key, float v);
 	int (*edit_data)(son_t * h, const char * key, const void * data, son_size_t size);
 	int (*edit_str)(son_t * h, const char * key, const char *v);
 	int (*edit_num)(son_t *h, const char * key, s32 v);
 	int (*edit_unum)(son_t * h, const char * key, u32 v);
 	int (*edit_bool)(son_t * h, const char * key, int v);
+	int (*send_message)(son_t * h, int fd, int timeout);
+	int (*recv_message)(son_t * h, int fd, int timeout);
+	int (*get_message_size)(son_t * h);
+	int (*seek_next)(son_t * h, char * name, son_value_t * type);
 } son_api_t;
 
 const son_api_t * son_api();
