@@ -15,3 +15,5 @@
 /build_release/
 
 *.user
+/build_kernel_armv7em_fpu/
+/build_kernel_armv7m/
