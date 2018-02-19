@@ -89,7 +89,7 @@ int phy_close_message(son_phy_t * phy){
 
 void son_phy_msleep(int ms){
 #if defined __win32 || defined __win64
-	Sleep(msec);
+    Sleep(ms);
 #else
 	usleep(ms*1000);
 #endif
