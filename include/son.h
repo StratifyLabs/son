@@ -116,8 +116,8 @@ typedef enum {
 	SON_ERR_NO_CHILDREN /*! 24: This happens when seeking the next children if the type is not an object or array. */
 } son_err_t;
 
-#define SON_STR_VERSION "0.3"
-#define SON_VERSION 0x0003
+#define SON_STR_VERSION "0.4"
+#define SON_VERSION 0x0004
 #include "son_phy.h"
 
 /*! \brief SON Size Type */
