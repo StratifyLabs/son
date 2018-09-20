@@ -2,6 +2,10 @@
 
 #include "son.h"
 
+#if !defined SOS_GIT_HASH
+#define SOS_GIT_HASH "??"
+#endif
+
 const son_api_t m_son_api = {
     .version = SON_VERSION,
     .git_hash = SOS_GIT_HASH,
