@@ -859,6 +859,7 @@ int son_edit_bool(son_t * h, const char * access, int value);
 
 typedef struct MCU_PACK {
 	u32 version;
+    const char * git_hash;
 	int (*get_error)(son_t * h);
 	int (*create)(son_t * h, const char * name, son_stack_t * stack, son_size_t stack_size);
 	int (*create_message)(son_t * h, void * message, int nbyte, son_stack_t * stack, son_size_t stack_size);
