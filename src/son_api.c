@@ -6,7 +6,7 @@
 #define SOS_GIT_HASH "??"
 #endif
 
-const son_api_t m_son_api = {
+const son_api_t son_api = {
     .version = SON_VERSION,
     .git_hash = SOS_GIT_HASH,
     .get_error = son_get_error,
@@ -52,5 +52,3 @@ const son_api_t m_son_api = {
     .get_message_size = son_get_message_size,
     .seek_next = son_seek_next
 };
-
-const son_api_t * son_api(){ return &m_son_api; }

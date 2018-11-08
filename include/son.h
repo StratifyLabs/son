@@ -116,8 +116,8 @@ typedef enum {
 	SON_ERR_NO_CHILDREN /*! 24: This happens when seeking the next children if the type is not an object or array. */
 } son_err_t;
 
-#define SON_STR_VERSION "0.4"
-#define SON_VERSION 0x0004
+#define SON_STR_VERSION "0.5"
+#define SON_VERSION 0x0005
 #include "son_phy.h"
 
 /*! \brief SON Size Type */
@@ -904,7 +904,7 @@ typedef struct MCU_PACK {
 	int (*seek_next)(son_t * h, char * name, son_value_t * type);
 } son_api_t;
 
-const son_api_t * son_api();
+extern const son_api_t son_api;
 
 
 #ifdef __cplusplus
