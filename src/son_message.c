@@ -73,6 +73,7 @@ int son_get_message_size(son_t * h){
 		ret = next + sizeof(son_hdr_t);
 	} else {
 		h->err = SON_ERR_INCOMPLETE_MESSAGE;
+		son_local_assign_checksum(h);
 		ret = -1;
 	}
 	return ret;
