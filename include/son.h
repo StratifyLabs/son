@@ -857,6 +857,8 @@ int son_edit_bool(son_t * h, const char * access, int value);
 
 /*! @} */
 
+#define SON_API_T 1
+
 typedef struct MCU_PACK {
 	u32 version;
     const char * git_hash;
@@ -906,6 +908,11 @@ typedef struct MCU_PACK {
 
 extern const son_api_t son_api;
 
+#if defined __link
+#define SON_API_REQUEST &son_api
+#else
+#define SON_API_REQUEST MCU_API_REQUEST_CODE('s','o','n','_')
+#endif
 
 #ifdef __cplusplus
 }
